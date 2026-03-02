@@ -4,11 +4,8 @@
   <p><em>Um Hub de Entretenimento e Aplicações com Minimalismo Cinemático</em></p>
 </div>
 
-O **Kiosker** é uma aplicação focada em transformar o seu PC/TV em um hub limpo, minimalista e navegado por joystick/teclado. Com inspiração no Apple tvOS, o Kiosker isola distrações do Windows e te foca diretamente nos seus streamings, jogos e programas preferidos.
-
-## 📥 Como Instalar (Windows)
-
-O Kiosker está disponível através do nosso instalador automático para Windows x64.
+O **Kiosker** é uma aplicação que objetiva transformar seu computador Windows em um hub de entretenimento navegável por mouse/teclado/joystick.
+Está disponível através de um instalador para Windows x64.
 
 1. Vá até a página de **[Releases](../../releases)** deste repositório (no menu lateral direito do GitHub).
 2. Baixe o instalador mais recente:
@@ -17,21 +14,15 @@ O Kiosker está disponível através do nosso instalador automático para Window
 3. Execute o botão duplo no arquivo baixado e siga o assistente de instalação (Next > Next > Install).
 
 ## 🚀 Como Usar
+A ideia do Kiosker é ser simples, direto, e utilizável de distintas formas.
+- Você pode navegar por teclado usando as `setas` + `enter`;
+- Você pode navegar pelo mouse;
+- Você pode navegar por joysticks usando o direcional e o botão X/A.
 
-O Kiosker é extremamente focado em controles simples (Spatial Navigation) construído pra você não precisar de mouse:
-- **Teclado:** Navegue usando as `Setas` + `Enter`.
-- **Controle / Gamepad:** Use o seu controle (D-Pad e botão **X/A**) se conectado diretamente para explorar a interface.
+O Kiosker invoca aplicações em tela cheia/executa sites no modo `--kiosk` do navegador. Para retornar ao hub, use o atalho `CTRL` + `SHIFT` + `Q`, ou 3x cliques com o botão direito do mouse, ou ainda os botões `Start` + `X/A` do joystick.
 
-### 🛑 Atalho de Segurança "Anti-Travamento"
-
-Como o Kiosker abre seus jogos e plataformas em modo janela cheia, criamos duas "rotas de fuga" essenciais caso você fique preso em um aplicativo sem conseguir usar o gamepad para voltar para casa:
-- Se você tiver um **Mouse**: Clique 3x rapidamente com o *botão direito*.
-- Com o **Teclado**: Pressione simultaneamente `CTRL` + `SHIFT` + `Q`.
-
-Isso vai encerrar instantaneamente qualquer site ou app em tela cheia e te devolver para o hub Kiosker!
-
-## 🛠️ Tecnologias
-Construído com uma stack de altíssima performance:
-- [Tauri](https://tauri.app/) & [Rust](https://www.rust-lang.org/) para integrações no fundo do OS (Navegação Global, Execução de Processos Locais).
-- React + Vite renderizando com suporte a aceleração via GPU de interface em framerate nativo.
-- [Framer Motion](https://www.framer.com/motion/) gerenciando as físicas de escalonamento suave e Glassmorphism UI.
+## Roadmaps
+O Kiosker está em um estado embrionário. Boa parte do que era desejável com ele já está pronto, mas temos algumas melhorias em mente:
+- O ícone do Kiosker foi gerado com IA. Queremos refiná-lo para que a identidade visual da aplicação fique mais refinada.
+- Os cards gerados pelas aplicações carecem de detalhes estéticos. Precisamos implementar uma lógica mais robusta para buscar as imagens/ícones das aplicações.
+- Eventuais problemas serão registrados no roadmap.
