@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@theme {
+  --color-kiosk-bg: #030303;
+  --color-kiosk-surface: #0a0a0a;
+  --color-kiosk-primary: #38bdf8;
+  /* Sky 400 */
+  --color-kiosk-accent: #818cf8;
+  /* Indigo 400 */
+  --font-sans: "Inter", sans-serif;
+  --font-display: "Outfit", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-kiosk-bg text-white overflow-hidden select-none font-sans antialiased selection:bg-kiosk-primary/30;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-display tracking-tight text-white/90;
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:scale-110 focus:ring-0 focus:border-white/80 focus:border-2 focus:drop-shadow-2xl focus:z-20 transition-all duration-300 ease-out;
+  }
+
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-lg;
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  }
+}
