@@ -12,7 +12,7 @@ export function useSpatialNavigation() {
         const activeElement = document.activeElement as HTMLElement | null;
         const focusableElements = Array.from(
             document.querySelectorAll<HTMLElement>(
-                '[tabindex="0"]:not([disabled]), button:not([disabled]), a[href]:not([disabled]), input:not([disabled])'
+                '[tabindex="0"]:not([disabled]), button:not([disabled]):not([tabindex="-1"]), a[href]:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"])'
             )
         ).filter(el => {
             const rect = el.getBoundingClientRect();

@@ -304,3 +304,21 @@ fn search_fallback_image(query: &str, client: &Client) -> Option<String> {
     }
     None
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_sanitize_web_url() {
+        assert_eq!(sanitize_web_url("google.com".to_string()), "https://google.com");
+        assert_eq!(sanitize_web_url("http://example.com".to_string()), "http://example.com");
+        assert_eq!(sanitize_web_url("  https://test.com  ".to_string()), "https://test.com");
+    }
+
+    #[test]
+    fn test_extrapolate_title_from_url() {
+        assert_eq!(extrapolate_title_from_url("https://www.netflix.com"), "Netflix");
+        assert_eq!(extrapolate_title_from_url("http://youtube.com/watch"), "Youtube");
+        assert_eq!(extrapolate_title_from_url("google.pt"), "Google");
+    }
+}

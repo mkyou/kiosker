@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Globe, X, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface AddEntryFormProps {
     onComplete: () => void;
 }
 
 export function AddEntryForm({ onComplete }: AddEntryFormProps) {
+    const { t } = useTranslation();
     const [urlsInput, setUrlsInput] = useState("");
     const [isChecking, setIsChecking] = useState(false);
     const [failedUrls, setFailedUrls] = useState<string[]>([]);
@@ -33,7 +36,6 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                 console.error("Health check failed:", e);
             }
 
-            // Add healthy URLs
             for (const url of healthyUrls) {
                 let metadata: any = { title: null, icon_url: null, description: null };
                 try {
@@ -56,15 +58,12 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                 }
             }
 
-            // Figure out which ones failed
             const failed = lines.filter(url => !healthyUrls.includes(url));
             if (failed.length > 0) {
                 setFailedUrls(failed);
             } else {
-                onComplete(); // Done if all were healthy
+                onComplete();
             }
-
-            // clear the input
             setUrlsInput("");
         } catch (error) {
             console.error("Check failed:", error);
@@ -106,58 +105,83 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fade-in">
-            <div className="relative w-full max-w-xl glass-panel p-8 rounded-3xl border border-white/10 flex flex-col shadow-2xl">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-dracula-bg/40 backdrop-blur-[40px] animate-fade-in">
+            <div className="relative w-full max-w-2xl apple-glass p-12 squircle-lg border-white/10 flex flex-col shadow-[0_50px_100px_rgba(0,0,0,0.5)]">
                 <button
                     onClick={onComplete}
-                    className="absolute top-4 right-4 p-2 text-white/50 hover:text-white rounded-full hover:bg-white/10 transition-colors"
+                    className="absolute top-8 right-8 p-3 text-dracula-fg/30 hover:text-dracula-fg rounded-full apple-glass transition-all hover:scale-110 active:scale-95 border-white/5"
                 >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    <X className="w-6 h-6" />
                 </button>
 
-                <div>
-                    <div className="flex items-center justify-center gap-3 mb-2">
-                        <svg className="w-6 h-6 text-white/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                        </svg>
-                        <h3 className="text-2xl font-display font-semibold text-white">Adicionar Streaming</h3>
+                <div className="text-center mb-10">
+                    <div className="inline-flex items-center justify-center p-4 bg-dracula-cyan/10 text-dracula-cyan rounded-2xl mb-6">
+                        <Globe className="w-8 h-8" />
                     </div>
-                    <p className="text-sm text-center text-white/50 mb-6 w-full px-4">Adicione serviços da web. O sistema fará um *Health Check* automático buscando o favicon (ícone). Use uma URL por linha.</p>
+                    <h3 className="text-4xl font-display font-black text-dracula-fg mb-4 tracking-tighter">{t('home.web')}</h3>
+                    <p className="text-dracula-fg/40 text-lg font-sans leading-relaxed px-10">
+                        {t('settings.browser.desc')}
+                    </p>
+                </div>
 
+                <div className="relative group/field mb-6">
                     <textarea
+                        autoFocus
                         value={urlsInput}
                         onChange={(e) => setUrlsInput(e.target.value)}
-                        className="w-full h-32 bg-black/40 border border-white/5 rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-white/30 resize-none font-sans text-sm mb-4"
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                                e.preventDefault();
+                                handleWebLinksAdd();
+                            }
+                        }}
+                        className="w-full h-48 bg-dracula-bg/40 border-2 border-white/5 squircle-md p-8 text-dracula-fg placeholder-dracula-fg/10 focus:outline-none focus:border-dracula-purple/30 transition-all font-sans text-lg selection:bg-dracula-purple/30 resize-none"
                         placeholder="https://netflix.com&#10;https://youtube.com/tv"
                     />
-
-                    {failedUrls.length > 0 && (
-                        <div className="mb-4 bg-red-900/20 border border-red-500/30 rounded-xl p-4">
-                            <h4 className="text-red-400 font-semibold mb-2">Falhas de Verificação</h4>
-                            <ul className="flex flex-col gap-2">
-                                {failedUrls.map((url, idx) => (
-                                    <li key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 bg-black/40 rounded-lg">
-                                        <span className="text-xs font-mono text-white/70 truncate" title={url}>{url}</span>
-                                        <button
-                                            onClick={() => handleForceAdd(url)}
-                                            className="px-3 py-1 bg-white/10 text-xs rounded-md hover:bg-white/20 transition whitespace-nowrap"
-                                        >
-                                            Adicionar Mesmo Assim
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+                    <div className="absolute bottom-4 right-6 flex items-center gap-2 text-[10px] text-dracula-fg/10 font-black uppercase tracking-widest pointer-events-none group-focus-within/field:text-dracula-purple/30 transition-colors">
+                        Ctrl + Enter para enviar
+                    </div>
                 </div>
+
+                {failedUrls.length > 0 && (
+                    <div className="mb-8 apple-glass border-dracula-pink/20 bg-dracula-pink/5 squircle-md p-8 animate-shake">
+                        <div className="flex items-center gap-3 mb-6">
+                            <AlertTriangle className="text-dracula-pink w-6 h-6" />
+                            <h4 className="text-dracula-pink font-black uppercase tracking-widest text-sm">Atenção: Falha na verificação</h4>
+                        </div>
+                        <ul className="flex flex-col gap-4">
+                            {failedUrls.map((url, idx) => (
+                                <li key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-dracula-bg/40 squircle-md border border-white/5">
+                                    <span className="text-sm font-mono text-dracula-fg/50 truncate max-w-xs">{url}</span>
+                                    <button
+                                        onClick={() => handleForceAdd(url)}
+                                        className="px-5 py-2.5 bg-dracula-purple/10 text-dracula-purple text-[10px] font-black uppercase tracking-widest squircle-md hover:bg-dracula-purple/20 transition-all border border-dracula-purple/20 active:scale-95"
+                                    >
+                                        Adicionar mesmo assim
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
                 <button
                     tabIndex={0}
                     onClick={handleWebLinksAdd}
                     disabled={isChecking || !urlsInput.trim()}
-                    className="w-full py-4 bg-blue-600/50 text-white font-medium rounded-xl hover:bg-blue-600/70 disabled:opacity-50 disabled:cursor-not-allowed focus-ring transition-colors shadow-lg mt-4"
+                    className="w-full py-5 bg-dracula-purple text-dracula-bg font-black uppercase tracking-[0.3em] text-xs squircle-lg hover:bg-dracula-purple/90 disabled:opacity-30 transition-all shadow-[0_10px_30px_rgba(189,147,249,0.3)] active:scale-98 flex items-center justify-center gap-3"
                 >
-                    {isChecking ? "Verificando..." : "Validar e Adicionar"}
+                    {isChecking ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Verificando links...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Check className="w-5 h-5" />
+                            <span>Validar e adicionar</span>
+                        </>
+                    )}
                 </button>
             </div>
         </div>

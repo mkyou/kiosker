@@ -1,41 +1,65 @@
 @import "tailwindcss";
 
 @theme {
-  --color-kiosk-bg: #030303;
-  --color-kiosk-surface: #0a0a0a;
-  --color-kiosk-primary: #38bdf8;
-  /* Sky 400 */
-  --color-kiosk-accent: #818cf8;
-  /* Indigo 400 */
+  --color-dracula-bg: #383448;
+  --color-dracula-surface: #44475a;
+  --color-dracula-purple: #bd93f9;
+  --color-dracula-green: #50fa7b;
+  --color-dracula-cyan: #8be9fd;
+  --color-dracula-pink: #ff79c6;
+  --color-dracula-yellow: #f1fa8c;
+  --color-dracula-fg: #f8f8f2;
+  
   --font-sans: "Inter", sans-serif;
   --font-display: "Outfit", sans-serif;
 }
 
 @layer base {
   body {
-    @apply bg-kiosk-bg text-white overflow-hidden select-none font-sans antialiased selection:bg-kiosk-primary/30;
+    @apply bg-dracula-bg text-dracula-fg overflow-hidden select-none font-sans antialiased;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(189, 147, 249, 0.08) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(139, 233, 253, 0.05) 0px, transparent 50%);
   }
 
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
-    @apply font-display tracking-tight text-white/90;
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight text-dracula-fg;
   }
 }
 
 @layer utilities {
   .focus-ring {
-    @apply focus:outline-none focus:scale-110 focus:ring-0 focus:border-white/80 focus:border-2 focus:drop-shadow-2xl focus:z-20 transition-all duration-300 ease-out;
+    @apply focus:outline-none focus:scale-105 focus:ring-[6px] focus:ring-dracula-purple/40 focus:z-20 transition-all duration-300;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+    box-shadow: 0 0 0 0 rgba(189, 147, 249, 0);
   }
 
-  .glass-panel {
-    @apply bg-white/5 backdrop-blur-2xl border border-white/10 shadow-lg;
+  .focus-ring:focus {
+    box-shadow: 0 0 50px rgba(189, 147, 249, 0.4), 0 0 100px rgba(139, 233, 253, 0.1);
   }
 
-  .text-glow {
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+  .apple-glass {
+    @apply bg-dracula-surface/30 backdrop-blur-[60px] border border-white/5 shadow-2xl;
+  }
+
+  .neon-glow-purple {
+    box-shadow: 0 0 30px rgba(189, 147, 249, 0.4);
+  }
+
+  .neon-glow-green {
+    box-shadow: 0 0 20px rgba(80, 250, 123, 0.5);
+  }
+
+  .squircle-lg {
+    border-radius: 2.5rem;
+  }
+
+  .squircle-r-lg {
+    border-top-right-radius: 2.5rem;
+    border-bottom-right-radius: 2.5rem;
+  }
+
+  .squircle-md {
+    border-radius: 1.5rem;
   }
 }

@@ -1,4 +1,4 @@
-use rusqlite::{Connection, Result};
+use rusqlite::{Connection, Result, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::sync::Mutex;
@@ -13,10 +13,12 @@ pub struct Item {
     pub icon_url: Option<String>,
     pub background_url: Option<String>,
     pub description: Option<String>,
+    pub is_favorite: bool,
 }
 
 pub struct AppState {
     pub db: Mutex<Connection>,
+    pub launched_pids: Mutex<Vec<(String, u32)>>,
 }
 
 pub fn init_db(app_handle: &AppHandle) -> Result<Connection, rusqlite::Error> {
@@ -47,6 +49,9 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection, rusqlite::Error> {
         [],
     )?;
 
+    // Try to migrate existing DB with the new is_favorite column (ignoring error if it already exists)
+    let _ = conn.execute("ALTER TABLE items ADD COLUMN is_favorite BOOLEAN DEFAULT 0", []);
+
     // Table for User Preferences and Persistence (like Autostart)
     conn.execute(
         "CREATE TABLE IF NOT EXISTS settings (
@@ -63,7 +68,7 @@ pub fn init_db(app_handle: &AppHandle) -> Result<Connection, rusqlite::Error> {
 pub fn get_items(state: State<'_, AppState>) -> std::result::Result<Vec<Item>, String> {
     let conn = state.db.lock().map_err(|e| e.to_string())?;
 
-    let mut stmt = conn.prepare("SELECT id, title, item_type, target_path, icon_url, background_url, description FROM items").map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, title, item_type, target_path, icon_url, background_url, description, is_favorite FROM items").map_err(|e| e.to_string())?;
 
     let item_iter = stmt
         .query_map([], |row| {
@@ -75,6 +80,7 @@ pub fn get_items(state: State<'_, AppState>) -> std::result::Result<Vec<Item>, S
                 icon_url: row.get(4)?,
                 background_url: row.get(5)?,
                 description: row.get(6)?,
+                is_favorite: row.get::<_, i32>(7).unwrap_or(0) != 0,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -115,11 +121,39 @@ pub fn add_item(
     }
 
     conn.execute(
-        "INSERT INTO items (title, item_type, target_path, icon_url, background_url, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT INTO items (title, item_type, target_path, icon_url, background_url, description, is_favorite) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 0)",
         (&title, &item_type, &target_path, &icon_url, &background_url, &description),
     )
     .map_err(|e| e.to_string())?;
 
+    Ok(())
+}
+
+#[tauri::command]
+pub fn toggle_favorite(state: State<'_, AppState>, id: i32, is_favorite: bool) -> std::result::Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE items SET is_favorite = ?1 WHERE id = ?2",
+        (if is_favorite { 1 } else { 0 }, id),
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_setting(state: State<'_, AppState>, key: String) -> std::result::Result<Option<String>, String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT value FROM settings WHERE key = ?1").map_err(|e| e.to_string())?;
+    let val: Option<String> = stmt.query_row([key], |row| row.get(0)).optional().map_err(|e| e.to_string())?;
+    Ok(val)
+}
+
+#[tauri::command]
+pub fn update_setting(state: State<'_, AppState>, key: String, value: String) -> std::result::Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        (key, value),
+    ).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -130,4 +164,92 @@ pub fn delete_item(state: State<'_, AppState>, id: i32) -> std::result::Result<(
     conn.execute("DELETE FROM items WHERE id = ?1", [&id])
         .map_err(|e| e.to_string())?;
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    
+    use rusqlite::Connection;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute(
+            "CREATE TABLE items (
+                id INTEGER PRIMARY KEY,
+                title TEXT NOT NULL,
+                item_type TEXT NOT NULL,
+                target_path TEXT NOT NULL,
+                icon_url TEXT,
+                background_url TEXT,
+                description TEXT
+            )",
+            [],
+        ).unwrap();
+        conn.execute(
+            "CREATE TABLE settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )",
+            [],
+        ).unwrap();
+        conn
+    }
+
+    #[test]
+    fn test_add_and_get_item() {
+        let conn = setup_test_db();
+        
+        // Simulating add_item logic
+        conn.execute(
+            "INSERT INTO items (title, item_type, target_path) VALUES (?1, ?2, ?3)",
+            ("Test App", "exe", "C:/test.exe"),
+        ).unwrap();
+
+        let mut stmt = conn.prepare("SELECT title FROM items").unwrap();
+        let title: String = stmt.query_row([], |row| row.get(0)).unwrap();
+        assert_eq!(title, "Test App");
+    }
+
+    #[test]
+    fn test_browser_persistence() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            ("preferred_browser", "firefox"),
+        ).unwrap();
+        let val: String = conn.query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            ["preferred_browser"],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(val, "firefox");
+
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+            ("preferred_browser", "chrome"),
+        ).unwrap();
+        let val_new: String = conn.query_row(
+            "SELECT value FROM settings WHERE key = ?1",
+            ["preferred_browser"],
+            |row| row.get(0),
+        ).unwrap();
+        assert_eq!(val_new, "chrome");
+    }
+
+    #[test]
+    fn test_language_persistence() {
+        let conn = setup_test_db();
+        let languages = ["pt", "en", "es", "zh"];
+        for lang in languages {
+            conn.execute(
+                "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
+                ("language", lang),
+            ).unwrap();
+            let stored: String = conn.query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                ["language"],
+                |row| row.get(0),
+            ).unwrap();
+            assert_eq!(stored, lang);
+        }
+    }
 }

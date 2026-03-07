@@ -3,6 +3,9 @@ use tauri::Manager;
 mod db;
 mod processes;
 mod scraper;
+mod browser_profile;
+mod system_apps;
+mod system_status;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -21,11 +24,15 @@ pub fn run() {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_shortcuts(["CommandOrControl+Shift+Q"])
-                .unwrap()
-                .with_handler(|app, shortcut, event| {
+                .map(|b| b.with_handler(|app, _shortcut, event| {
                     if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        processes::kill_kiosk_browsers();
+                        let state = app.state::<db::AppState>();
+                        processes::kill_kiosk_browsers(Some(&state));
                     }
+                }))
+                .unwrap_or_else(|e| {
+                    eprintln!("Failed to register global shortcut: {}", e);
+                    tauri_plugin_global_shortcut::Builder::new()
                 })
                 .build(),
         )
@@ -33,11 +40,10 @@ pub fn run() {
             let conn = db::init_db(app.handle()).expect("Failed to initialize DB");
             app.manage(db::AppState {
                 db: std::sync::Mutex::new(conn),
+                launched_pids: std::sync::Mutex::new(Vec::new()),
             });
-
-            // Start background gamepad listener to kill Kiosk on Select+Start
             processes::start_gamepad_listener(app.handle().clone());
-            processes::start_global_mouse_listener();
+            processes::start_global_mouse_listener(app.handle().clone());
 
             Ok(())
         })
@@ -53,7 +59,17 @@ pub fn run() {
             scraper::fetch_fallback_image,
             db::get_items,
             db::add_item,
-            db::delete_item
+            db::delete_item,
+            db::toggle_favorite,
+            db::get_setting,
+            db::update_setting,
+            system_apps::get_system_apps,
+            processes::get_active_targets,
+            processes::kill_target,
+            processes::resolve_system_app_icon,
+            browser_profile::run_browser_migration,
+            system_status::get_system_status,
+            system_status::open_wifi_settings
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

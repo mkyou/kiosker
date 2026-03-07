@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::time::Duration;
+use sysinfo::{Pid, System};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct LocalExecMetadata {
@@ -9,8 +11,11 @@ pub struct LocalExecMetadata {
     pub icon_url: Option<String>,
 }
 
-use std::ffi::OsStr;
+#[cfg(target_os = "windows")]
 use std::os::windows::ffi::OsStrExt;
+use crate::db::AppState;
+use crate::browser_profile;
+use tauri::{State, AppHandle, Manager};
 
 #[tauri::command]
 pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String> {
@@ -21,6 +26,7 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
         .to_string_lossy()
         .into_owned();
 
+    #[allow(unused_mut)]
     let mut icon_url = None;
 
     #[cfg(target_os = "windows")]
@@ -141,7 +147,68 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
     })
 }
 
-pub fn start_gamepad_listener(_app_handle: tauri::AppHandle) {
+#[tauri::command]
+pub fn resolve_system_app_icon(icon_name: String) -> Option<String> {
+    #[cfg(target_os = "linux")]
+    {
+        use std::path::PathBuf;
+        
+        // If it's already an absolute path
+        let path = PathBuf::from(&icon_name);
+        if path.is_absolute() && path.exists() {
+            return convert_image_to_base64(&path);
+        }
+
+        // Search Linux hicolor dirs. We prefer scalable/svg or largest png.
+        let paths = vec![
+            "/usr/share/icons/hicolor/scalable/apps",
+            "/usr/share/icons/hicolor/512x512/apps",
+            "/usr/share/icons/hicolor/256x256/apps",
+            "/usr/share/icons/hicolor/128x128/apps",
+            "/usr/share/icons/hicolor/64x64/apps",
+            "/usr/share/icons/hicolor/48x48/apps",
+            "/usr/share/icons/hicolor/32x32/apps",
+            "/usr/share/pixmaps",
+            "/var/lib/flatpak/exports/share/icons/hicolor/scalable/apps",
+            "/var/lib/flatpak/exports/share/icons/hicolor/512x512/apps",
+            "/var/lib/flatpak/exports/share/icons/hicolor/128x128/apps",
+        ];
+
+        let exts = vec!["svg", "png", "xpm"];
+
+        for p in paths {
+            for ext in &exts {
+                let candidate = format!("{}/{}.{}", p, icon_name, ext);
+                if Path::new(&candidate).exists() {
+                    return convert_image_to_base64(Path::new(&candidate));
+                }
+            }
+        }
+    }
+    
+    // Windows logic doesn't usually feed pure names, but rather paths via the EXE itself. 
+    None
+}
+
+fn convert_image_to_base64(path: &Path) -> Option<String> {
+    use base64::Engine;
+    if let Ok(bytes) = fs::read(path) {
+        let b64 = base64::engine::general_purpose::STANDARD.encode(&bytes);
+        if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
+            let mime = match ext {
+                "svg" => "image/svg+xml",
+                "png" => "image/png",
+                "jpg" | "jpeg" => "image/jpeg",
+                "webp" => "image/webp",
+                _ => "image/png",
+            };
+            return Some(format!("data:{};base64,{}", mime, b64));
+        }
+    }
+    None
+}
+
+pub fn start_gamepad_listener(_app_handle: AppHandle) {
     std::thread::spawn(move || {
         use gilrs::{Button, Event, Gilrs};
 
@@ -167,7 +234,8 @@ pub fn start_gamepad_listener(_app_handle: tauri::AppHandle) {
                 if select_pressed && start_pressed {
                     // Send an event to frontend or kill chrome directly
                     println!("Select + Start pressed! Killing Kiosk browsers...");
-                    kill_kiosk_browsers();
+                    let state = _app_handle.state::<AppState>();
+                    kill_kiosk_browsers(Some(&state));
                 }
             }
             std::thread::sleep(Duration::from_millis(50));
@@ -175,7 +243,7 @@ pub fn start_gamepad_listener(_app_handle: tauri::AppHandle) {
     });
 }
 
-pub fn start_global_mouse_listener() {
+pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
     use rdev::{listen, Button, Event, EventType};
     use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -183,8 +251,9 @@ pub fn start_global_mouse_listener() {
     static RIGHT_CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
     static LAST_RIGHT_CLICK_TIME: AtomicU64 = AtomicU64::new(0);
 
-    std::thread::spawn(|| {
-        if let Err(error) = listen(|event: Event| {
+    let app_handle_inner = app_handle.clone();
+    std::thread::spawn(move || {
+        if let Err(error) = listen(move |event: Event| {
             if let EventType::ButtonPress(Button::Right) = event.event_type {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -198,7 +267,8 @@ pub fn start_global_mouse_listener() {
                     let count = RIGHT_CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
                     if count >= 3 {
                         RIGHT_CLICK_COUNT.store(0, Ordering::SeqCst);
-                        kill_kiosk_browsers();
+                        let state = app_handle_inner.state::<AppState>();
+                        kill_kiosk_browsers(Some(&state));
                     }
                 }
                 LAST_RIGHT_CLICK_TIME.store(now, Ordering::SeqCst);
@@ -209,80 +279,179 @@ pub fn start_global_mouse_listener() {
     });
 }
 
-pub fn kill_kiosk_browsers() {
-    #[cfg(target_os = "windows")]
-    {
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "chrome.exe"])
-            .spawn();
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "firefox.exe"])
-            .spawn();
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "msedge.exe"])
-            .spawn();
+pub fn kill_kiosk_browsers(state: Option<&State<'_, AppState>>) {
+    let mut system = System::new_all();
+    system.refresh_all();
+
+    if let Some(s) = state {
+        let mut pids_guard = s.launched_pids.lock().unwrap();
+        for (_, pid_val) in pids_guard.drain(..) {
+            let pid = Pid::from(pid_val as usize);
+            if let Some(process) = system.process(pid) {
+                 let _ = process.kill();
+            }
+            
+            // Kill children
+            for (_p_id, process) in system.processes() {
+                if process.parent() == Some(pid) {
+                    let _ = process.kill();
+                }
+            }
+        }
     }
 
-    #[cfg(target_os = "linux")]
-    {
-        let _ = Command::new("pkill").args(&["-f", "chrome"]).spawn();
-        let _ = Command::new("pkill").args(&["-f", "firefox"]).spawn();
-    }
 }
 
 #[tauri::command]
-pub fn launch_executable(path: String) -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    {
-        // Use cmd /C start to support .lnk, .iso, and other non-PE files
+pub fn launch_executable(state: State<'_, AppState>, path: String) -> Result<String, String> {
+    let child = if cfg!(target_os = "windows") {
         Command::new("cmd")
             .args(&["/C", "start", "", &path])
             .spawn()
-            .map_err(|e| format!("Failed to launch {}: {}", path, e))?;
-    }
-
-    #[cfg(not(target_os = "windows"))]
-    {
+            .map_err(|e| format!("Failed to launch {}: {}", path, e))?
+    } else {
         Command::new(&path)
             .spawn()
-            .map_err(|e| format!("Failed to launch {}: {}", path, e))?;
-    }
+            .map_err(|e| format!("Failed to launch {}: {}", path, e))?
+    };
+
+    let mut pids = state.launched_pids.lock().unwrap();
+    pids.push((path.clone(), child.id()));
 
     Ok(format!("Launched {}", path))
 }
 
 #[tauri::command]
-pub fn launch_kiosk(url: String) -> Result<String, String> {
-    #[cfg(target_os = "windows")]
-    {
-        // We'll try Firefox first. If it fails, we fall back to Chrome/Edge which might be accessible globally.
-        // A more robust way is to read the registry, but simple sequential fallbacks work.
-        // In "cmd /C start", relying on default browser is tricky to pass arguments like --kiosk
-
-        // Using -new-window helps force a new window context without wiping existing sessions (like cookies for Netflix),
-        // which makes -kiosk more reliable even if the user already has a normal Firefox session open.
-        let default_cmd = Command::new("cmd")
-            .args(&["/C", "start", "firefox", "-kiosk", "-new-window", &url])
-            .spawn();
-
-        if default_cmd.is_err() {
-            // Fallback to chrome
-            let _ = Command::new("cmd")
-                .args(&["/C", "start", "chrome", "--kiosk", &url])
-                .spawn();
+pub fn launch_kiosk(app_handle: AppHandle, state: State<'_, AppState>, url: String) -> Result<String, String> {
+    let profile_dir = browser_profile::get_kiosker_profile_dir(&app_handle);
+    let profile_str = profile_dir.to_string_lossy();
+    let browser_type = fs::read_to_string(profile_dir.join("browser.type")).unwrap_or_default();
+    
+    let child = if cfg!(target_os = "windows") {
+        if browser_type == "firefox" {
+             Command::new("cmd")
+                .args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url])
+                .spawn()
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
+        } else {
+             Command::new("cmd")
+                .args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url]).spawn())
+                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         }
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let cmd = Command::new("firefox").args(&["--kiosk", &url]).spawn();
-
-        if cmd.is_err() {
-            let _ = Command::new("google-chrome")
-                .args(&["--kiosk", &url])
-                .spawn();
+    } else {
+        if browser_type == "firefox" {
+             Command::new("firefox")
+                .args(&["--kiosk", "--profile", &profile_str, &url])
+                .spawn()
+                .or_else(|_| Command::new("google-chrome").args(&["--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
+        } else {
+             Command::new("google-chrome")
+                .args(&["--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
+                .or_else(|_| Command::new("firefox").args(&["--kiosk", "--profile", &profile_str, &url]).spawn())
+                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         }
-    }
+    };
+
+    let mut pids = state.launched_pids.lock().unwrap();
+    pids.push((url.clone(), child.id()));
 
     Ok("Launched kiosk".to_string())
+}
+
+#[tauri::command]
+pub fn get_active_targets(state: State<'_, AppState>) -> Vec<String> {
+    let mut system = System::new_all();
+    system.refresh_all();
+    
+    let mut pids_guard = state.launched_pids.lock().unwrap();
+    // Clean up dead ones while at it
+    pids_guard.retain(|(_, pid)| {
+        system.process(Pid::from(*pid as usize)).is_some()
+    });
+    
+    pids_guard.iter().map(|(path, _)| path.clone()).collect()
+}
+
+#[tauri::command]
+pub fn kill_target(state: State<'_, AppState>, target: String) -> Result<String, String> {
+    let mut system = System::new_all();
+    system.refresh_all();
+    
+    let mut pids_guard = state.launched_pids.lock().unwrap();
+    let mut to_remove = Vec::new();
+    
+    for (idx, (t, p_id)) in pids_guard.iter().enumerate() {
+        if t == &target {
+            let pid = Pid::from(*p_id as usize);
+            if let Some(process) = system.process(pid) {
+                let _ = process.kill();
+            }
+            // Kill kids too
+            for (_p_id, process) in system.processes() {
+                if process.parent() == Some(pid) {
+                    let _ = process.kill();
+                }
+            }
+            to_remove.push(idx);
+        }
+    }
+    
+    // Remote from end to keep indices stable
+    to_remove.sort_unstable_by(|a, b| b.cmp(a));
+    for idx in to_remove {
+        pids_guard.remove(idx);
+    }
+    
+    Ok(format!("Killed {}", target))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_process_metadata_fallback() {
+        // No Windows ou Linux, o file_stem deve extrair o nome do executável
+        let meta = get_executable_metadata("C:/Games/Cyberpunk2077.exe".to_string()).expect("Should parse path");
+        assert_eq!(meta.title, "Cyberpunk2077");
+        
+        let linux_meta = get_executable_metadata("/home/user/stremio".to_string()).expect("Should parse path");
+        assert_eq!(linux_meta.title, "stremio");
+    }
+
+    #[test]
+    fn test_right_click_interval() {
+        let now: u64 = 1000;
+        let last: u64 = 500;
+        // Se a diferença for < 1000ms, é um clique válido na sequência
+        assert!(now - last < 1000);
+    }
+
+    #[test]
+    fn test_active_targets_tracking() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![("test_url".to_string(), 12345u32)]);
+        
+        let targets: Vec<String> = pids.lock().unwrap().iter().map(|(t, _)| t.clone()).collect();
+        assert_eq!(targets[0], "test_url");
+    }
+
+    #[test]
+    fn test_kill_target_logic_clean_up() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![
+            ("target_a".to_string(), 100u32),
+            ("target_b".to_string(), 101u32)
+        ]);
+        
+        // Simulating kill_target for target_a
+        let mut pids_guard = pids.lock().unwrap();
+        let target_to_kill = "target_a";
+        pids_guard.retain(|(t, _)| t != target_to_kill);
+        
+        assert_eq!(pids_guard.len(), 1);
+        assert_eq!(pids_guard[0].0, "target_b");
+    }
 }

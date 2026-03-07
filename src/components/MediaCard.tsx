@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "../hooks/useTranslation";
 
 interface MediaCardProps {
     id: number;
@@ -8,11 +9,30 @@ interface MediaCardProps {
     target_path: string;
     item_type: string;
     background_url: string;
+    is_favorite?: boolean;
+    isRunning?: boolean;
+    onKill?: () => void;
     onRefresh?: () => void;
 }
 
-export function MediaCard({ id, title, target_path, item_type, background_url, onRefresh }: MediaCardProps) {
+export function MediaCard({ id, title, target_path, item_type, background_url, is_favorite, isRunning, onKill, onRefresh }: MediaCardProps) {
+    const { t } = useTranslation();
     const [showMenu, setShowMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (showMenu && menuRef.current) {
+            const firstBtn = menuRef.current.querySelector("button");
+            // Dá um micro-delay para a animação renderizar o botão 
+            setTimeout(() => firstBtn?.focus(), 50);
+        }
+    }, [showMenu]);
+
+    const handleBlur = (e: React.FocusEvent) => {
+        if (showMenu && !e.currentTarget.contains(e.relatedTarget as Node)) {
+            setShowMenu(false);
+        }
+    };
 
     const handleAction = async () => {
         try {
@@ -21,13 +41,14 @@ export function MediaCard({ id, title, target_path, item_type, background_url, o
             } else {
                 await invoke("launch_executable", { path: target_path });
             }
+            if (onRefresh) onRefresh();
         } catch (err) {
             console.error("Launch error:", err);
         }
     };
 
-    const handleDelete = async (e: React.MouseEvent) => {
-        e.stopPropagation();
+    const handleDelete = async (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
         try {
             await invoke("delete_item", { id });
             if (onRefresh) onRefresh();
@@ -37,57 +58,157 @@ export function MediaCard({ id, title, target_path, item_type, background_url, o
         setShowMenu(false);
     };
 
-    const handleContextMenu = (e: React.MouseEvent) => {
-        e.preventDefault();
+    const handleKill = (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        if (onKill) onKill();
+        setShowMenu(false);
+    }
+
+    const handleToggleFavorite = async (e?: React.MouseEvent) => {
+        if (e) e.stopPropagation();
+        try {
+            await invoke("toggle_favorite", { id, isFavorite: !is_favorite });
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            console.error("Favorite error:", err);
+        }
+        setShowMenu(false);
+    };
+
+    const handleContextMenu = (e?: React.MouseEvent | React.KeyboardEvent) => {
+        if (e) e.preventDefault();
         setShowMenu(true);
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === "ContextMenu" || (e.shiftKey && e.key === "F10")) {
+            handleContextMenu(e);
+        }
+    };
+
     return (
-        <div className="relative w-full aspect-[4/3] group/container" onMouseLeave={() => setShowMenu(false)}>
+        <div 
+            className={`relative group w-full aspect-[2/3] perspective-1000 ${showMenu ? 'z-[100]' : 'z-0'}`}
+            onBlur={handleBlur}
+        >
             <motion.button
-                tabIndex={0}
-                onClick={handleAction}
+                layoutId={`card-${id}`}
+                tabIndex={showMenu ? -1 : 0}
                 onContextMenu={handleContextMenu}
-                whileHover={{ y: -5 }}
-                whileFocus={{ y: -5 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
-                className="focus-ring relative group outline-none w-full h-full rounded-3xl overflow-hidden glass-panel flex flex-col block text-left border border-white/5 transition-all shadow-xl"
+                onKeyDown={handleKeyDown}
+                onClick={handleAction}
+                className="relative w-full h-full squircle-lg overflow-hidden apple-glass focus-ring group pointer-events-auto shadow-2xl"
+                whileHover={{ y: -10 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
             >
-                {/* Background Blur Layer */}
-                <div className="absolute inset-0 w-full h-full bg-zinc-900 border-white/5 border overflow-hidden">
-                    <img src={background_url} alt="" className="w-full h-full object-cover opacity-30 blur-2xl scale-150 group-focus:opacity-40 group-hover:opacity-40 transition-all duration-700" />
+                {/* Background Shadow Glow */}
+                <div className="absolute inset-0 bg-dracula-purple/5 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity duration-500" />
+
+                {/* Status Indicator */}
+                {isRunning && (
+                    <div className="absolute top-4 right-4 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-dracula-bg/80 backdrop-blur-md border border-dracula-green/30 text-dracula-green text-[10px] font-black uppercase tracking-[0.2em] neon-glow-green animate-pulse">
+                        <div className="w-1.5 h-1.5 rounded-full bg-dracula-green shadow-[0_0_10px_#50fa7b]" />
+                        {t('common.running')}
+                    </div>
+                )}
+
+                {/* Media Artwork & Background Engine */}
+                {background_url ? (
+                    <div className="absolute inset-0 w-full h-full overflow-hidden flex items-center justify-center bg-dracula-bg">
+                        {/* Dynamic Glassmorphism Background layer created from the logo itself (Blurred) */}
+                        <div className="absolute inset-0 scale-150 opacity-40 overflow-hidden mix-blend-screen group-hover:opacity-60 transition-opacity duration-700">
+                            <img src={background_url} className="w-full h-full object-cover blur-3xl saturate-200" aria-hidden="true" />
+                        </div>
+                        
+                        {/* The Actual Centered Logo/Icon */}
+                        <div className="relative w-3/5 h-3/5 flex items-center justify-center drop-shadow-2xl">
+                             <img 
+                                src={background_url} 
+                                alt={title} 
+                                className="max-w-full max-h-full object-contain filter transition-transform duration-700 ease-out group-hover:scale-110 group-focus:scale-110" 
+                            />
+                        </div>
+                    </div>
+                ) : (
+                    // Fallback when there is strictly no image available
+                    <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-dracula-surface/80 to-dracula-bg">
+                        <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-inner group-hover:scale-110 group-focus:scale-110 transition-transform duration-700">
+                             <span className="font-display font-black text-4xl text-dracula-fg/30 uppercase">{title.charAt(0)}</span>
+                        </div>
+                    </div>
+                )}
+
+                {/* Foreground Overlay Gradient for Title Readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-dracula-bg via-transparent to-transparent opacity-70 pointer-events-none" />
+
+                {/* Floating Title */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
+                    <h3 className="text-xl font-display font-black text-white leading-tight drop-shadow-lg transform transition-transform duration-500 group-hover:translate-y-[-4px] group-focus:translate-y-[-4px]">
+                        {title}
+                    </h3>
+                    <div className="h-1 w-0 bg-dracula-purple group-hover:w-12 group-focus:w-12 transition-all duration-500 mt-2 rounded-full" />
                 </div>
 
-                {/* Crisp Logo Layer */}
-                <div className="absolute inset-0 w-full h-full flex items-center justify-center p-8 pb-16">
-                    <img src={background_url} alt={title} className="w-full h-full object-contain drop-shadow-2xl group-focus:scale-110 group-hover:scale-110 transition-transform duration-500" />
-                </div>
-
-                {/* Gradient Overlay ensuring text is readable */}
-                <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black via-black/60 to-transparent p-6 pb-8 flex flex-col justify-end opacity-100 transition-opacity duration-300">
-                    <h3 className="text-white font-display font-bold text-2xl leading-normal line-clamp-2 drop-shadow-md">{title}</h3>
-                </div>
             </motion.button>
 
+            {/* Context Menu Overlay */}
             <AnimatePresence>
                 {showMenu && (
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-black/80 backdrop-blur-xl border border-white/10 p-2 rounded-2xl shadow-2xl flex flex-col gap-2 min-w-[140px]"
+                        ref={menuRef}
+                        initial={{ opacity: 0, x: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 10, scale: 0.95 }}
+                        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                        onMouseLeave={() => setShowMenu(false)}
+                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                        className="absolute z-[100] left-full ml-4 top-0 flex flex-col items-center justify-start p-3 gap-2 bg-dracula-surface/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-40 max-h-[110%] overflow-y-auto"
                     >
-                        <button onClick={(e) => { e.stopPropagation(); handleAction(); setShowMenu(false); }} className="px-4 py-2 text-white hover:bg-white/10 rounded-xl text-sm font-medium transition-colors text-left flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                            Abrir
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                            className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-white/5 text-dracula-fg border border-white/10 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-white/10 hover:border-white/20 group/btn"
+                        >
+                            <span className="text-sm group-hover/btn:scale-125 transition-transform">✕</span>
+                            <span className="truncate">VOLTAR</span>
                         </button>
-                        <button onClick={handleDelete} className="px-4 py-2 text-red-400 hover:bg-red-500/20 rounded-xl text-sm font-medium transition-colors text-left flex items-center gap-2">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Excluir
+
+                        <button
+                            onClick={handleAction}
+                            className="w-full flex items-center justify-center gap-3 py-3.5 px-3 rounded-2xl bg-dracula-purple/20 text-dracula-purple border border-dracula-purple/30 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-dracula-purple/30 group/btn"
+                        >
+                            <span className="text-sm group-hover/btn:scale-125 transition-transform">{isRunning ? '↺' : '▶'}</span>
+                            <span className="truncate">{isRunning ? t('common.restart') : t('common.open')}</span>
+                        </button>
+                        
+                        {isRunning && (
+                            <button
+                                onClick={handleKill}
+                                className="w-full flex items-center justify-center gap-3 py-3.5 px-3 rounded-2xl bg-dracula-pink/10 text-dracula-pink border border-dracula-pink/30 font-black uppercase tracking-widest text-[10px] transition-all hover:bg-dracula-pink/20 group/btn"
+                            >
+                                <span className="text-sm group-hover/btn:scale-125 transition-transform">⏹</span>
+                                <span className="truncate">{t('common.close')}</span>
+                            </button>
+                        )}
+
+                        <button
+                            onClick={handleToggleFavorite}
+                            className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-dracula-yellow/10 text-dracula-yellow border border-dracula-yellow/20 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-dracula-yellow/20 group/btn"
+                        >
+                            <span className="text-sm group-hover/btn:scale-125 transition-transform">{is_favorite ? '★' : '☆'}</span>
+                            <span className="truncate">{is_favorite ? 'REMOVER FAVORITO' : 'FAVORITAR'}</span>
+                        </button>
+
+                        <button
+                            onClick={handleDelete}
+                            className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-white/5 text-dracula-fg/50 border border-transparent font-bold uppercase tracking-wider text-[8px] transition-all hover:text-dracula-red hover:bg-dracula-red/10 hover:border-dracula-red/30 group/btn focus-ring"
+                        >
+                            <span className="text-sm group-hover/btn:scale-125 transition-transform">🗑</span>
+                            <span className="truncate">{t('common.delete')}</span>
                         </button>
                     </motion.div>
                 )}
             </AnimatePresence>
         </div>
+
     );
 }
