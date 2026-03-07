@@ -146,7 +146,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                         <Plus className="w-10 h-10 text-dracula-purple/40" />
                     </div>
                     <h2 className="text-2xl font-display font-black text-dracula-fg/40 mb-2">Biblioteca vazia</h2>
-                    <p className="font-sans text-lg max-w-sm text-center opacity-30 leading-relaxed italic mb-10">
+                    <p className="font-sans text-lg max-w-sm text-center text-dracula-fg/40 leading-relaxed italic mb-10">
                         Adicione serviços à sua interface utilizando os cartões de ação logo abaixo.
                     </p>
                     <div className="flex gap-4">

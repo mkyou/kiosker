@@ -162,6 +162,7 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
                         onMouseLeave={() => setShowMenu(false)}
                         onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                        role="menu"
                         className="absolute z-[100] left-full ml-4 top-0 flex flex-col items-center justify-start p-3 gap-2 bg-dracula-surface/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-40 max-h-[110%] overflow-y-auto"
                     >
                         <button

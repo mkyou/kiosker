@@ -60,6 +60,8 @@ pub fn run() {
             db::get_items,
             db::add_item,
             db::delete_item,
+            db::export_database,
+            db::import_database,
             db::toggle_favorite,
             db::get_setting,
             db::update_setting,

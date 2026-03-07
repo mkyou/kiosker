@@ -46,6 +46,24 @@ export function Settings() {
         }
     };
 
+    const handleExport = async () => {
+        try {
+            const result = await invoke<string>("export_database");
+            alert(result);
+        } catch (e) {
+            console.error("Export failed:", e);
+        }
+    };
+
+    const handleImport = async () => {
+        try {
+            const result = await invoke<string>("import_database");
+            alert(result);
+        } catch (e) {
+            console.error("Import failed:", e);
+        }
+    };
+
     return (
         <div className="flex flex-col w-full h-full p-12 md:p-20 overflow-y-auto animate-fade-in-up [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* The Toolbar already indicates we are in Settings, so we skip the redundant header */}
@@ -62,7 +80,7 @@ export function Settings() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mt-auto">
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("firefox")}
@@ -102,8 +120,30 @@ export function Settings() {
                                 {preferredBrowser === "chrome" && migrating && <Loader2 size={28} className="animate-spin text-dracula-cyan" />}
                             </div>
                             <div className="text-left">
-                                <span className="font-black text-3xl block mb-1 tracking-tight">Chromium</span>
+                                <span className="font-black text-3xl block mb-1 tracking-tight">Chrome</span>
                                 <span className="text-sm opacity-50 font-sans font-medium uppercase tracking-widest">{t('settings.browser.chrome_desc')}</span>
+                            </div>
+                        </button>
+
+                        <button
+                            disabled={migrating}
+                            onClick={() => handleBrowserChange("edge")}
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                                preferredBrowser === "edge"
+                                    ? "bg-dracula-green/10 border-dracula-green/50 text-dracula-green shadow-[0_0_30px_rgba(80,250,123,0.3)]"
+                                    : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
+                            }`}
+                        >
+                            <div className="flex justify-between items-start w-full">
+                                <div className={`p-4 squircle-md ${preferredBrowser === "edge" ? "bg-dracula-green/20" : "bg-white/5"}`}>
+                                    <Monitor size={32} />
+                                </div>
+                                {preferredBrowser === "edge" && !migrating && <Check size={28} className="text-dracula-green" />}
+                                {preferredBrowser === "edge" && migrating && <Loader2 size={28} className="animate-spin text-dracula-green" />}
+                            </div>
+                            <div className="text-left">
+                                <span className="font-black text-3xl block mb-1 tracking-tight">Edge</span>
+                                <span className="text-sm opacity-50 font-sans font-medium uppercase tracking-widest">Microsoft Edge</span>
                             </div>
                         </button>
                     </div>
@@ -139,14 +179,20 @@ export function Settings() {
                         <p className="text-dracula-fg/40 text-lg mb-12 font-sans">{t('settings.data.desc')}</p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <button className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500">
+                            <button 
+                                onClick={handleExport}
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                            >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-cyan/10 text-dracula-cyan rounded-xl group-hover:scale-110 transition-transform"><Download size={20}/></div>
                                     <span className="tracking-tight uppercase text-xs">{t('settings.data.export')}</span>
                                 </div>
                                 <div className="text-dracula-fg/20 group-hover:text-dracula-fg group-hover:translate-x-1 transition-all">→</div>
                             </button>
-                            <button className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500">
+                            <button 
+                                onClick={handleImport}
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                            >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-purple/10 text-dracula-purple rounded-xl group-hover:scale-110 transition-transform"><Upload size={20}/></div>
                                     <span className="tracking-tight uppercase text-xs">{t('settings.data.import')}</span>

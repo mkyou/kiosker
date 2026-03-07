@@ -16,7 +16,17 @@ export function useSpatialNavigation() {
             )
         ).filter(el => {
             const rect = el.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+            const isVisible = rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+            if (!isVisible) return false;
+
+            // If we are currently in a menu, only allow focusing other things in the SAME menu
+            if (activeElement) {
+                const activeMenu = activeElement.closest('[role="menu"], .absolute.z-\\[100\\]');
+                if (activeMenu) {
+                    return activeMenu.contains(el);
+                }
+            }
+            return true;
         });
 
         if (focusableElements.length === 0) return;

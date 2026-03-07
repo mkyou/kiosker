@@ -5,6 +5,8 @@ use tauri::Manager;
 
 #[cfg(target_os = "windows")]
 const CHROME_LOCAL_WIN: &str = "Google/Chrome/User Data/Default";
+#[cfg(target_os = "windows")]
+const EDGE_LOCAL_WIN: &str = "Microsoft/Edge/User Data/Default";
 #[cfg(target_os = "linux")]
 const CHROME_LOCAL_LINUX: &str = ".config/google-chrome/Default";
 #[cfg(target_os = "windows")]
@@ -22,7 +24,7 @@ pub fn get_kiosker_profile_dir(app_handle: &AppHandle) -> PathBuf {
 }
 
 pub fn find_default_browser_profile() -> Option<(PathBuf, &'static str)> {
-    // 1. Prioritize Firefox (User Preference)
+    // 1. Prioritize Firefox (User Preference - Privacy)
     #[cfg(target_os = "windows")]
     if let Some(appdata) = std::env::var_os("APPDATA") {
         let path = Path::new(&appdata).join(FIREFOX_LOCAL_WIN);
@@ -34,7 +36,7 @@ pub fn find_default_browser_profile() -> Option<(PathBuf, &'static str)> {
         if let Some(p) = find_firefox_profile_in_dir(&path) { return Some((p, "firefox")); }
     }
 
-    // 2. Fallback to Chrome
+    // 2. Next: Chrome
     #[cfg(target_os = "windows")]
     if let Some(local_appdata) = std::env::var_os("LOCALAPPDATA") {
         let path = Path::new(&local_appdata).join(CHROME_LOCAL_WIN);
@@ -44,6 +46,13 @@ pub fn find_default_browser_profile() -> Option<(PathBuf, &'static str)> {
     if let Some(home) = std::env::var_os("HOME") {
         let path = Path::new(&home).join(CHROME_LOCAL_LINUX);
         if path.exists() { return Some((path, "chrome")); }
+    }
+
+    // 3. Last Fallback: Edge (Windows Default)
+    #[cfg(target_os = "windows")]
+    if let Some(local_appdata) = std::env::var_os("LOCALAPPDATA") {
+        let path = Path::new(&local_appdata).join(EDGE_LOCAL_WIN);
+        if path.exists() { return Some((path, "chrome")); } // Edge is Chromium-based, uses same file structure
     }
 
     None
@@ -106,10 +115,15 @@ fn find_default_browser_profile_by_type(browser_type: &str) -> Option<(PathBuf, 
             if let Some(p) = find_firefox_profile_in_dir(&path) { return Some((p, "firefox")); }
         }
     } else {
+        // Try Chrome first
         #[cfg(target_os = "windows")]
         if let Some(local_appdata) = std::env::var_os("LOCALAPPDATA") {
             let path = Path::new(&local_appdata).join(CHROME_LOCAL_WIN);
             if path.exists() { return Some((path, "chrome")); }
+            
+            // Try Edge as fallback for Chromium
+            let edge_path = Path::new(&local_appdata).join(EDGE_LOCAL_WIN);
+            if edge_path.exists() { return Some((edge_path, "chrome")); }
         }
         #[cfg(target_os = "linux")]
         if let Some(home) = std::env::var_os("HOME") {

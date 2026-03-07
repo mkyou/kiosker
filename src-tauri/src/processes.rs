@@ -335,10 +335,13 @@ pub fn launch_kiosk(app_handle: AppHandle, state: State<'_, AppState>, url: Stri
                 .args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url])
                 .spawn()
                 .or_else(|_| Command::new("cmd").args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
                 .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         } else {
+             // Try standard chromium (Chrome/Edge)
              Command::new("cmd")
                 .args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
                 .or_else(|_| Command::new("cmd").args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url]).spawn())
                 .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         }
