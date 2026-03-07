@@ -41,7 +41,7 @@ export function SystemAppPicker({ onSelect, onClose }: SystemAppPickerProps) {
     );
 
     return (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 bg-dracula-bg/40 backdrop-blur-[60px] animate-fade-in">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-6 bg-dracula-bg/60 backdrop-blur-[12px] animate-fade-in">
             <div className="relative w-full max-w-4xl apple-glass squircle-lg border-white/10 flex flex-col max-h-[90vh] overflow-hidden shadow-[0_60px_120px_rgba(0,0,0,0.6)]">
                 <header className="p-12 border-b border-white/5 flex flex-col gap-8 bg-white/[0.02]">
                     <div className="flex items-center justify-between">

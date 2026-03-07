@@ -39,7 +39,7 @@
   }
 
   .apple-glass {
-    @apply bg-dracula-surface/30 backdrop-blur-[60px] border border-white/5 shadow-2xl;
+    @apply bg-dracula-surface/60 backdrop-blur-[12px] border border-white/10 shadow-2xl;
   }
 
   .neon-glow-purple {

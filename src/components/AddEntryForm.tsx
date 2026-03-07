@@ -105,7 +105,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-dracula-bg/40 backdrop-blur-[40px] animate-fade-in">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-dracula-bg/60 backdrop-blur-[12px] animate-fade-in">
             <div className="relative w-full max-w-2xl apple-glass p-12 squircle-lg border-white/10 flex flex-col shadow-[0_50px_100px_rgba(0,0,0,0.5)]">
                 <button
                     onClick={onComplete}
