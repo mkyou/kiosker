@@ -142,11 +142,11 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                 <div className="absolute inset-0 bg-gradient-to-t from-dracula-bg via-transparent to-transparent opacity-70 pointer-events-none" />
 
                 {/* Floating Title */}
-                <div className="absolute bottom-0 left-0 right-0 p-6 z-20">
-                    <h3 className="text-xl font-display font-black text-white leading-tight drop-shadow-lg transform transition-transform duration-500 group-hover:translate-y-[-4px] group-focus:translate-y-[-4px]">
+                <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
+                    <h3 className="text-base md:text-lg lg:text-xl font-display font-black text-white leading-[1.1] drop-shadow-lg transform transition-transform duration-500 group-hover:translate-y-[-4px] group-focus:translate-y-[-4px] line-clamp-2 uppercase tracking-tight">
                         {title}
                     </h3>
-                    <div className="h-1 w-0 bg-dracula-purple group-hover:w-12 group-focus:w-12 transition-all duration-500 mt-2 rounded-full" />
+                    <div className="h-1 w-0 bg-dracula-purple group-hover:w-10 group-focus:w-10 transition-all duration-500 mt-2 rounded-full" />
                 </div>
 
             </motion.button>
