@@ -13,6 +13,8 @@ pub struct LocalExecMetadata {
 
 #[cfg(target_os = "windows")]
 use std::os::windows::ffi::OsStrExt;
+#[cfg(target_os = "windows")]
+use std::ffi::OsStr;
 use crate::db::AppState;
 use crate::browser_profile;
 use tauri::{State, AppHandle, Manager};
