@@ -52,63 +52,65 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
     ];
 
     return (
-        <div className="fixed top-0 left-0 right-0 h-20 px-12 flex items-center justify-between z-[200] pointer-events-none select-none">
+        <div className="fixed top-0 left-0 right-0 h-20 px-8 md:px-12 z-[200] pointer-events-none select-none">
             {/* Ambient Background Gradient for the bar */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#383448] via-[#383448]/80 to-transparent h-32" />
             
-            {/* Logo Part */}
-            <div className="flex items-center gap-5 relative z-10 pointer-events-auto cursor-pointer group" onClick={() => setActiveTab("home")}>
-                <span className="font-display font-black text-2xl tracking-tighter text-dracula-fg opacity-80 group-hover:opacity-100 transition-opacity">
-                    KIOSKER
-                </span>
-            </div>
-
-            {/* Navigation Tabs (Centered) */}
-            <nav className="flex items-center gap-2 p-1.5 apple-glass squircle-md relative z-10 pointer-events-auto">
-                {menus.map((m) => {
-                    const Icon = m.icon;
-                    const isActive = activeTab === m.id;
-                    return (
-                        <button
-                            key={m.id}
-                            onClick={() => setActiveTab(m.id)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") {
-                                    setActiveTab(m.id);
-                                }
-                            }}
-                            className={cn(
-                                "flex items-center gap-3 px-6 py-2.5 rounded-2xl transition-all duration-500 outline-none font-sans font-bold text-sm tracking-wide",
-                                isActive
-                                    ? "bg-dracula-surface text-dracula-fg shadow-xl"
-                                    : "text-dracula-fg/30 hover:text-dracula-fg/60 focus:bg-white/5"
-                            )}
-                        >
-                            <Icon size={18} className={cn("transition-transform duration-500", isActive ? "text-dracula-purple" : "")} />
-                            {m.label}
-                        </button>
-                    );
-                })}
-            </nav>
-            
-            {/* Status & Clock */}
-            <div className="flex items-center gap-10 relative z-10 pointer-events-auto">
-                <div className="flex items-center gap-6 text-dracula-fg/30">
-                    <button onClick={handleWifiClick} className="flex items-center gap-2 hover:text-dracula-cyan transition-colors" title="Abrir configurações de rede">
-                        <Wifi size={20} strokeWidth={2.5} className={sysStatus.wifi_connected ? "text-dracula-green/60" : "text-dracula-pink/60"} />
-                    </button>
-                    <div className="flex items-center gap-2 pointer-events-none opacity-50 px-2 font-display">
-                        {sysStatus.battery_percentage !== null && (
-                            <span className="font-bold text-lg tracking-wider">{sysStatus.battery_percentage}%</span>
-                        )}
-                        {sysStatus.is_charging && (
-                            <span className="text-dracula-green font-black uppercase tracking-[0.2em] text-[10px] ml-1">Carregando</span>
-                        )}
-                    </div>
+            <div className="relative h-full w-full flex items-center justify-between">
+                {/* Logo Part - Flexible Width */}
+                <div className="flex-1 flex items-center justify-start overflow-hidden relative z-10 pointer-events-auto cursor-pointer group" onClick={() => setActiveTab("home")}>
+                    <span className="font-display font-black text-2xl tracking-tighter text-dracula-fg opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        KIOSKER<span className="hidden lg:inline text-dracula-purple ml-1">.</span>
+                    </span>
                 </div>
 
-                <div className="text-dracula-fg font-display font-black text-xl tracking-widest drop-shadow-2xl">
-                    {formatTime(time)}
+                {/* Navigation Tabs (Centered in own space) */}
+                <nav className="flex items-center gap-2 p-1.5 apple-glass squircle-md relative z-10 pointer-events-auto mx-4 shrink-0">
+                    {menus.map((m) => {
+                        const Icon = m.icon;
+                        const isActive = activeTab === m.id;
+                        return (
+                            <button
+                                key={m.id}
+                                onClick={() => setActiveTab(m.id)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        setActiveTab(m.id);
+                                    }
+                                }}
+                                className={cn(
+                                    "flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 md:py-2.5 rounded-2xl transition-all duration-500 outline-none font-sans font-bold text-xs md:text-sm tracking-wide",
+                                    isActive
+                                        ? "bg-dracula-surface text-dracula-fg shadow-xl"
+                                        : "text-dracula-fg/30 hover:text-dracula-fg/60 focus:bg-white/5"
+                                )}
+                            >
+                                <Icon size={18} className={cn("transition-transform duration-500", isActive ? "text-dracula-purple" : "")} />
+                                <span className={cn(activeTab !== m.id && "hidden sm:inline")}>{m.label}</span>
+                            </button>
+                        );
+                    })}
+                </nav>
+                
+                {/* Status & Clock - Flexible Width */}
+                <div className="flex-1 flex items-center justify-end gap-4 md:gap-10 relative z-10 pointer-events-auto overflow-hidden">
+                    <div className="flex items-center gap-4 md:gap-6 text-dracula-fg/30">
+                        <button onClick={handleWifiClick} className="flex items-center gap-2 hover:text-dracula-cyan transition-colors" title="Abrir configurações de rede">
+                            <Wifi size={20} strokeWidth={2.5} className={sysStatus.wifi_connected ? "text-dracula-green/60" : "text-dracula-pink/60"} />
+                        </button>
+                        <div className="flex items-center gap-1 md:gap-2 pointer-events-none opacity-50 px-1 md:px-2 font-display">
+                            {sysStatus.battery_percentage !== null && (
+                                <span className="font-bold text-sm md:text-lg tracking-wider">{sysStatus.battery_percentage}%</span>
+                            )}
+                            {sysStatus.is_charging && (
+                                <span className="text-dracula-green font-black uppercase tracking-[0.2em] text-[8px] md:text-[10px] ml-1 hidden xs:inline">Carregando</span>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="text-dracula-fg font-display font-black text-sm md:text-xl tracking-widest drop-shadow-2xl whitespace-nowrap">
+                        {formatTime(time)}
+                    </div>
                 </div>
             </div>
         </div>

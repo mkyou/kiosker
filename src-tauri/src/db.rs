@@ -180,7 +180,7 @@ pub async fn export_database(app_handle: AppHandle) -> std::result::Result<Strin
     let file_path = app_handle.dialog().file().set_title("Exportar Biblioteca").set_file_name("kiosker_backup.sqlite").blocking_save_file();
     
     if let Some(dest) = file_path {
-        fs::copy(&db_path, dest.path()).map_err(|e| e.to_string())?;
+        fs::copy(&db_path, dest.to_string()).map_err(|e| e.to_string())?;
         Ok("Biblioteca exportada com sucesso!".to_string())
     } else {
         Err("Operação cancelada.".to_string())
@@ -207,7 +207,7 @@ pub async fn import_database(app_handle: AppHandle, state: State<'_, AppState>) 
         // Small delay to ensure the OS releases the file lock
         std::thread::sleep(std::time::Duration::from_millis(100));
 
-        fs::copy(src.path(), &db_path).map_err(|e| e.to_string())?;
+        fs::copy(src.to_string(), &db_path).map_err(|e| e.to_string())?;
         
         // Re-initialize the connection to the new database file
         {

@@ -113,16 +113,38 @@ export function useSpatialNavigation() {
                         document.activeElement.click();
                     }
                     break;
+                case "q":
+                case "Q":
+                    if (e.ctrlKey && e.shiftKey) {
+                        e.preventDefault();
+                        import("@tauri-apps/api/core").then(({ invoke }) => {
+                            invoke("kill_all_kiosks").catch(console.error);
+                        });
+                    }
+                    break;
+                case "F10":
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        // Trigger context menu on focused element
+                        if (document.activeElement instanceof HTMLElement) {
+                            const event = new MouseEvent("contextmenu", {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window
+                            });
+                            document.activeElement.dispatchEvent(event);
+                        }
+                    }
+                    break;
             }
         };
 
-        // Mouse Triple Right-Click Listener
-        const handleContextMenu = (e: MouseEvent) => {
-            e.preventDefault(); // Block default browser right-click menu
-
+        // Mouse Triple Left-Click Listener (Fallback/Local)
+        const handleClick = (e: MouseEvent) => {
+            if (e.button !== 0) return; // Only Left Click
+            
             const now = Date.now();
             if (now - lastRightClickTime.current > 1000) {
-                // Reset counter if more than 1s passed
                 rightClickCount.current = 1;
             } else {
                 rightClickCount.current += 1;
@@ -130,15 +152,20 @@ export function useSpatialNavigation() {
             lastRightClickTime.current = now;
 
             if (rightClickCount.current === 3) {
-                // Triple right click detected!
-                rightClickCount.current = 0; // reset
+                rightClickCount.current = 0;
                 import("@tauri-apps/api/core").then(({ invoke }) => {
                     invoke("kill_all_kiosks").catch(console.error);
                 });
             }
         };
 
+        const handleContextMenu = (_e: MouseEvent) => {
+            // We only prevent default if we want to block the browser menu, 
+            // but our MediaCard handles its own contextmenu event.
+        };
+
         window.addEventListener("keydown", handleKeyDown);
+        window.addEventListener("click", handleClick);
         window.addEventListener("contextmenu", handleContextMenu);
 
         // Gamepad Polling Loop
@@ -164,6 +191,14 @@ export function useSpatialNavigation() {
                     else if (activePad.buttons[14]?.pressed) { moveFocus("left"); handled = true; }
                     else if (activePad.buttons[15]?.pressed) { moveFocus("right"); handled = true; }
 
+                    // L3 (10) + R3 (11) combo for Exit
+                    else if (activePad.buttons[10]?.pressed && activePad.buttons[11]?.pressed) {
+                        import("@tauri-apps/api/core").then(({ invoke }) => {
+                            invoke("kill_all_kiosks").catch(console.error);
+                        });
+                        handled = true;
+                    }
+
                     // Action button (A / Cross = button 0)
                     else if (activePad.buttons[0]?.pressed) {
                         const activeEl = document.activeElement as HTMLElement;
@@ -184,6 +219,7 @@ export function useSpatialNavigation() {
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("click", handleClick);
             window.removeEventListener("contextmenu", handleContextMenu);
             if (gamepadRef.current) cancelAnimationFrame(gamepadRef.current);
         };

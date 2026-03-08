@@ -92,7 +92,6 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
             onBlur={handleBlur}
         >
             <motion.button
-                layoutId={`card-${id}`}
                 tabIndex={showMenu ? -1 : 0}
                 onContextMenu={handleContextMenu}
                 onKeyDown={handleKeyDown}

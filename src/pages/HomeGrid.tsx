@@ -19,29 +19,16 @@ export interface KioskerItem {
 }
 
 interface HomeGridProps {
-    activeTab: string; // Will mainly be "home" now
+    items: KioskerItem[];
+    loading: boolean;
+    onRefresh: () => void;
 }
 
-export function HomeGrid({ activeTab }: HomeGridProps) {
+export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
     const { t } = useTranslation();
-    const [items, setItems] = useState<KioskerItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const [showAddWeb, setShowAddWeb] = useState(false);
     const [showSystemAppPicker, setShowSystemAppPicker] = useState(false);
     const [activeTargets, setActiveTargets] = useState<string[]>([]);
-
-    const fetchItems = async () => {
-        setLoading(true);
-        try {
-            const result = await invoke<KioskerItem[]>("get_items");
-            setItems(result);
-        } catch (error) {
-            console.error("Failed to load items from backend:", error);
-            setItems([]);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const refreshActiveTargets = async () => {
         try {
@@ -53,9 +40,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
     };
 
     useEffect(() => {
-        fetchItems();
         refreshActiveTargets();
-        
         const interval = setInterval(refreshActiveTargets, 3000);
         return () => clearInterval(interval);
     }, []);
@@ -63,7 +48,6 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
     const handleSystemAppSelect = async (app: { name: string; exec: string; icon?: string }) => {
         try {
             setShowSystemAppPicker(false);
-            setLoading(true);
             
             type LocalExecMetadata = { title: string; icon_url: string | null };
             const metadata = await invoke<LocalExecMetadata>("get_executable_metadata", { path: app.exec });
@@ -84,11 +68,9 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                 backgroundUrl: null,
                 description: "System Application"
             });
-            fetchItems();
+            onRefresh();
         } catch (e) {
             console.error("Error adding system app:", e);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -119,7 +101,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                     backgroundUrl: null,
                     description: "Manual Executable"
                 });
-                fetchItems();
+                onRefresh();
             }
         } catch (error) {
             console.error("Failed to pick executable:", error);
@@ -127,18 +109,12 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
     };
 
     // Derived State Organization
-    // 1. Favoritos: itens selecionados pelo usuário
     const favoriteItems = items.filter(i => i.is_favorite).sort((a,b) => a.title.localeCompare(b.title));
-    // 2. Web Items Sorted Alphabetically
     const webItems = items.filter(i => i.item_type === 'web').sort((a,b) => a.title.localeCompare(b.title));
-    // 3. Executable Items Sorted Alphabetically
     const appItems = items.filter(i => i.item_type === 'exe').sort((a,b) => a.title.localeCompare(b.title));
-
-    if (activeTab !== "home") return null;
 
     return (
         <div className="flex flex-col w-full h-full p-8 md:p-12 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-
 
             {!loading && items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center w-full flex-1 text-dracula-fg/10 animate-fade-in">
@@ -161,7 +137,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
             ) : (
                 <div className="flex flex-col w-full pb-32 animate-fade-in-up space-y-16">
                     
-                    {/* Favoritos Section - Standard scale */}
+                    {/* Favoritos Section */}
                     {favoriteItems.length > 0 && (
                         <section>
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-yellow/80 mb-6 flex items-center gap-3">
@@ -180,14 +156,14 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                                         background_url={item.icon_url || item.background_url || ""}
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
-                                        onRefresh={fetchItems}
+                                        onRefresh={onRefresh}
                                     />
                                 ))}
                             </div>
                         </section>
                     )}
 
-                    {/* Web Section - Smaller scaled grid with "Add Action Card" at the end */}
+                    {/* Web Section */}
                     {webItems.length > 0 && (
                         <section>
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/60 mb-6 flex items-center gap-3">
@@ -205,7 +181,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                                         background_url={item.icon_url || item.background_url || ""}
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
-                                        onRefresh={fetchItems}
+                                        onRefresh={onRefresh}
                                     />
                                 ))}
                                 {/* Action Card para adicionar mais websites */}
@@ -222,7 +198,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                         </section>
                     )}
 
-                    {/* Apps Section - Smaller scaled grid with "Add Action Card" at the end */}
+                    {/* Apps Section */}
                     {appItems.length > 0 && (
                         <section>
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/60 mb-6 flex items-center gap-3">
@@ -240,7 +216,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                                         background_url={item.icon_url || item.background_url || ""}
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
-                                        onRefresh={fetchItems}
+                                        onRefresh={onRefresh}
                                     />
                                 ))}
                                 {/* Action Card para adicionar mais aplicativos */}
@@ -257,7 +233,7 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                         </section>
                     )}
 
-                    {/* When library is NOT fully empty, but sections are disjoint, add missing category action buttons */}
+                    {/* Missing categories action buttons */}
                     {items.length > 0 && (webItems.length === 0 || appItems.length === 0) && (
                         <section className="pt-8 border-t border-white/5 flex gap-4">
                            {webItems.length === 0 && (
@@ -276,12 +252,11 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                 </div>
             )}
 
-            {/* Modal for Web Additions */}
+            {/* Modals */}
             {showAddWeb && (
-                <AddEntryForm onComplete={() => { setShowAddWeb(false); fetchItems(); }} />
+                <AddEntryForm onComplete={() => { setShowAddWeb(false); onRefresh(); }} />
             )}
 
-            {/* System App Picker */}
             {showSystemAppPicker && (
                 <SystemAppPicker 
                     onSelect={handleSystemAppSelect} 
@@ -289,7 +264,6 @@ export function HomeGrid({ activeTab }: HomeGridProps) {
                 />
             )}
 
-            {/* Floating manual pick button when System Picker is open */}
             {showSystemAppPicker && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[70] flex justify-center">
                     <button 

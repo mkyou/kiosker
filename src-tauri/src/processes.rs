@@ -219,23 +219,22 @@ pub fn start_gamepad_listener(_app_handle: AppHandle) {
             Err(_) => return, // If no gamepad support, gracefully degrade
         };
 
-        // State to detect Select + Start combo
-        let mut select_pressed = false;
-        let mut start_pressed = false;
+        // State to detect L3 + R3 combo
+        let mut l3_pressed = false;
+        let mut r3_pressed = false;
 
         loop {
             while let Some(Event { event, .. }) = gilrs.next_event() {
                 match event {
-                    gilrs::EventType::ButtonPressed(Button::Select, _) => select_pressed = true,
-                    gilrs::EventType::ButtonReleased(Button::Select, _) => select_pressed = false,
-                    gilrs::EventType::ButtonPressed(Button::Start, _) => start_pressed = true,
-                    gilrs::EventType::ButtonReleased(Button::Start, _) => start_pressed = false,
+                    gilrs::EventType::ButtonPressed(Button::LeftThumb, _) => l3_pressed = true,
+                    gilrs::EventType::ButtonReleased(Button::LeftThumb, _) => l3_pressed = false,
+                    gilrs::EventType::ButtonPressed(Button::RightThumb, _) => r3_pressed = true,
+                    gilrs::EventType::ButtonReleased(Button::RightThumb, _) => r3_pressed = false,
                     _ => {}
                 }
 
-                if select_pressed && start_pressed {
-                    // Send an event to frontend or kill chrome directly
-                    println!("Select + Start pressed! Killing Kiosk browsers...");
+                if l3_pressed && r3_pressed {
+                    println!("L3 + R3 pressed! Killing Kiosk browsers...");
                     let state = _app_handle.state::<AppState>();
                     kill_kiosk_browsers(Some(&state));
                 }
@@ -250,30 +249,30 @@ pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
     use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    static RIGHT_CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
-    static LAST_RIGHT_CLICK_TIME: AtomicU64 = AtomicU64::new(0);
+    static LEFT_CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static LAST_LEFT_CLICK_TIME: AtomicU64 = AtomicU64::new(0);
 
     let app_handle_inner = app_handle.clone();
     std::thread::spawn(move || {
         if let Err(error) = listen(move |event: Event| {
-            if let EventType::ButtonPress(Button::Right) = event.event_type {
+            if let EventType::ButtonPress(Button::Left) = event.event_type {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis() as u64;
-                let last = LAST_RIGHT_CLICK_TIME.load(Ordering::SeqCst);
+                let last = LAST_LEFT_CLICK_TIME.load(Ordering::SeqCst);
 
                 if now - last > 1000 {
-                    RIGHT_CLICK_COUNT.store(1, Ordering::SeqCst);
+                    LEFT_CLICK_COUNT.store(1, Ordering::SeqCst);
                 } else {
-                    let count = RIGHT_CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+                    let count = LEFT_CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
                     if count >= 3 {
-                        RIGHT_CLICK_COUNT.store(0, Ordering::SeqCst);
+                        LEFT_CLICK_COUNT.store(0, Ordering::SeqCst);
                         let state = app_handle_inner.state::<AppState>();
                         kill_kiosk_browsers(Some(&state));
                     }
                 }
-                LAST_RIGHT_CLICK_TIME.store(now, Ordering::SeqCst);
+                LAST_LEFT_CLICK_TIME.store(now, Ordering::SeqCst);
             }
         }) {
             println!("Error listening to global mouse: {:?}", error);

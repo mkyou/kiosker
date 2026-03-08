@@ -152,22 +152,22 @@ export function Settings() {
                 {/* Right side group */}
                 <div className="space-y-8 flex flex-col h-full">
                     {/* Autostart */}
-                    <div className="apple-glass p-8 squircle-lg border-white/5">
+                    <div className="apple-glass p-8 md:p-12 squircle-lg border-white/5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
                             <div className="max-w-md">
-                                <h3 className="text-3xl font-display font-black mb-3">{t('settings.startup.title')}</h3>
-                                <p className="text-dracula-fg/40 text-lg font-sans leading-relaxed">{t('settings.startup.desc')}</p>
+                                <h3 className="text-2xl font-display font-black mb-2">{t('settings.startup.title')}</h3>
+                                <p className="text-dracula-fg/40 text-base font-sans leading-relaxed">{t('settings.startup.desc')}</p>
                             </div>
 
                             <button
                                 onClick={toggleAutoStart}
-                                className={`flex items-center gap-8 p-6 squircle-md border transition-all min-w-[280px] justify-between group ${
+                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full sm:w-auto sm:min-w-[280px] justify-between group shrink-0 ${
                                     autoStart ? 'bg-dracula-green/10 border-dracula-green/40 text-dracula-green neon-glow-green' : 'bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/10'
                                 }`}
                             >
-                                <span className="font-black uppercase tracking-[0.2em] text-xs">{t('settings.startup.autostart')}</span>
-                                <div className={`w-14 h-7 rounded-full relative transition-colors duration-500 ${autoStart ? 'bg-dracula-green' : 'bg-white/10'}`}>
-                                    <div className={`w-5 h-5 bg-white rounded-full absolute top-1 shadow-lg transition-all duration-500 ${autoStart ? 'right-1' : 'left-1'}`}></div>
+                                <span className="font-black uppercase tracking-[0.2em] text-[10px]">{t('settings.startup.autostart')}</span>
+                                <div className={`w-12 h-6 rounded-full relative transition-colors duration-500 shrink-0 ${autoStart ? 'bg-dracula-green' : 'bg-white/10'}`}>
+                                    <div className={`w-4 h-4 bg-white rounded-full absolute top-1 shadow-lg transition-all duration-500 ${autoStart ? 'right-1' : 'left-1'}`}></div>
                                 </div>
                             </button>
                         </div>
@@ -213,8 +213,9 @@ export function Settings() {
                         </div>
                     </div>
 
-                    <div className="overflow-hidden squircle-lg border border-white/5 bg-dracula-bg/40">
-                        <table className="w-full text-left font-sans border-collapse">
+                    <div className="overflow-x-auto squircle-lg border border-white/5 bg-dracula-bg/40 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="min-w-[800px]">
+                            <table className="w-full text-left font-sans border-collapse">
                             <thead>
                                 <tr className="bg-white/[0.03] text-[10px] uppercase tracking-[0.4em] font-black text-dracula-fg/20">
                                     <th className="px-10 py-8">{t('settings.commands.header_action')}</th>
@@ -232,10 +233,20 @@ export function Settings() {
                                         </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-cyan shadow-xl tracking-wider">CTRL + SHIFT + Q</kbd>
+                                        <div className="flex gap-2 items-center">
+                                            <kbd className="bg-dracula-surface px-3 py-1.5 squircle-sm border border-white/10 text-[10px] font-mono text-dracula-cyan shadow-lg">CTRL</kbd>
+                                            <span className="text-dracula-purple font-black text-xs">+</span>
+                                            <kbd className="bg-dracula-surface px-3 py-1.5 squircle-sm border border-white/10 text-[10px] font-mono text-dracula-cyan shadow-lg">SHIFT</kbd>
+                                            <span className="text-dracula-purple font-black text-xs">+</span>
+                                            <kbd className="bg-dracula-surface px-3 py-1.5 squircle-sm border border-white/10 text-[10px] font-mono text-dracula-cyan shadow-lg">Q</kbd>
+                                        </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <span className="text-xs font-black uppercase tracking-widest text-dracula-pink bg-dracula-pink/10 px-5 py-3 squircle-md border border-dracula-pink/20">{t('settings.commands.exit.mouse')}</span>
+                                        <div className="flex gap-2 items-center">
+                                            <span className="bg-dracula-pink/10 px-4 py-2 squircle-sm border border-dracula-pink/20 text-[10px] font-black uppercase tracking-widest text-dracula-pink">BOTÃO ESQUERDO</span>
+                                            <span className="text-dracula-fg/20 font-black text-xs">→</span>
+                                            <span className="bg-dracula-pink/20 px-3 py-1.5 squircle-sm border border-dracula-pink/30 text-[9px] font-black uppercase text-dracula-pink">(3X)</span>
+                                        </div>
                                     </td>
                                     <td className="px-10 py-10">
                                         <div className="flex gap-3 items-center">
@@ -253,12 +264,14 @@ export function Settings() {
                                         </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <div className="flex flex-col gap-3">
-                                            <kbd className="w-fit bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-cyan shadow-xl tracking-wider">{t('settings.commands.manage.keyboard')}</kbd>
+                                        <div className="flex gap-2 items-center">
+                                            <kbd className="bg-dracula-surface px-3 py-1.5 squircle-sm border border-white/10 text-[10px] font-mono text-dracula-cyan shadow-lg">SHIFT</kbd>
+                                            <span className="text-dracula-purple font-black text-xs">+</span>
+                                            <kbd className="bg-dracula-surface px-3 py-1.5 squircle-sm border border-white/10 text-[10px] font-mono text-dracula-cyan shadow-lg">F10</kbd>
                                         </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <span className="text-xs font-black uppercase tracking-widest text-dracula-cyan bg-dracula-cyan/10 px-5 py-3 squircle-md border border-dracula-cyan/20">{t('settings.commands.manage.mouse')}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-dracula-cyan bg-dracula-cyan/10 px-5 py-3 squircle-sm border border-dracula-cyan/20">BOTÃO DIREITO</span>
                                     </td>
                                     <td className="px-10 py-10">
                                         <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl tracking-widest uppercase">X / Square</kbd>
@@ -268,10 +281,11 @@ export function Settings() {
                         </table>
                     </div>
                 </div>
+                </div>
 
                 {/* Language Selection */}
-                <div className="apple-glass p-8 squircle-lg xl:col-span-2 border-white/10">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-12">
+                <div className="apple-glass p-8 squircle-lg xl:col-span-2 border-white/10 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-12 min-w-[700px]">
                         <div className="max-w-xl">
                             <h3 className="text-4xl font-display font-black mb-4 tracking-tighter">{t('settings.language.title')}</h3>
                             <p className="text-dracula-fg/40 text-xl leading-relaxed font-sans">
