@@ -153,15 +153,15 @@ export function Settings() {
                 <div className="space-y-8 flex flex-col h-full">
                     {/* Autostart */}
                     <div className="apple-glass p-8 md:p-12 squircle-lg border-white/5">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
-                            <div className="max-w-md">
+                        <div className="flex flex-wrap items-center justify-between gap-10">
+                            <div className="flex-1 min-w-[280px]">
                                 <h3 className="text-2xl font-display font-black mb-2">{t('settings.startup.title')}</h3>
                                 <p className="text-dracula-fg/40 text-base font-sans leading-relaxed">{t('settings.startup.desc')}</p>
                             </div>
 
                             <button
                                 onClick={toggleAutoStart}
-                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full sm:w-auto sm:min-w-[280px] justify-between group shrink-0 ${
+                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full md:w-auto md:min-w-[280px] justify-between group shrink-0 ${
                                     autoStart ? 'bg-dracula-green/10 border-dracula-green/40 text-dracula-green neon-glow-green' : 'bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/10'
                                 }`}
                             >

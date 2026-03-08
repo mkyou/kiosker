@@ -19,6 +19,45 @@ use crate::db::AppState;
 use crate::browser_profile;
 use tauri::{State, AppHandle, Manager};
 
+#[cfg(target_os = "windows")]
+fn find_browser_exe(browser_type: &str) -> Option<std::path::PathBuf> {
+    let program_files = std::env::var_os("ProgramFiles").map(std::path::PathBuf::from);
+    let program_files_x86 = std::env::var_os("ProgramFiles(x86)").map(std::path::PathBuf::from);
+    let local_appdata = std::env::var_os("LOCALAPPDATA").map(std::path::PathBuf::from);
+
+    match browser_type {
+        "firefox" => {
+            let paths = vec![
+                program_files.as_ref().map(|p| p.join("Mozilla Firefox\\firefox.exe")),
+                program_files_x86.as_ref().map(|p| p.join("Mozilla Firefox\\firefox.exe")),
+            ];
+            for p in paths.into_iter().flatten() {
+                if p.exists() { return Some(p); }
+            }
+        },
+        "chrome" | "webview" => {
+            let paths = vec![
+                program_files.as_ref().map(|p| p.join("Google\\Chrome\\Application\\chrome.exe")),
+                local_appdata.as_ref().map(|p| p.join("Google\\Chrome\\Application\\chrome.exe")),
+            ];
+            for p in paths.into_iter().flatten() {
+                if p.exists() { return Some(p); }
+            }
+        },
+        "edge" => {
+             let paths = vec![
+                program_files_x86.as_ref().map(|p| p.join("Microsoft\\Edge\\Application\\msedge.exe")),
+                program_files.as_ref().map(|p| p.join("Microsoft\\Edge\\Application\\msedge.exe")),
+            ];
+            for p in paths.into_iter().flatten() {
+                if p.exists() { return Some(p); }
+            }
+        }
+        _ => {}
+    }
+    None
+}
+
 #[tauri::command]
 pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String> {
     let p = Path::new(&path);
@@ -310,11 +349,18 @@ pub fn kill_kiosk_browsers(state: Option<&State<'_, AppState>>) {
 
 #[tauri::command]
 pub fn launch_executable(state: State<'_, AppState>, path: String) -> Result<String, String> {
+    let p = Path::new(&path);
     let child = if cfg!(target_os = "windows") {
-        Command::new("cmd")
-            .args(&["/C", "start", "", &path])
-            .spawn()
-            .map_err(|e| format!("Failed to launch {}: {}", path, e))?
+        if p.extension().map_or(false, |ext| ext == "lnk" || ext == "bat" || ext == "cmd") {
+             Command::new("cmd")
+                .args(&["/C", "start", "", &path])
+                .spawn()
+                .map_err(|e| format!("Failed to launch link {}: {}", path, e))?
+        } else {
+            Command::new(&path)
+                .spawn()
+                .map_err(|e| format!("Failed to launch exe {}: {}", path, e))?
+        }
     } else {
         Command::new(&path)
             .spawn()
@@ -334,21 +380,29 @@ pub fn launch_kiosk(app_handle: AppHandle, state: State<'_, AppState>, url: Stri
     let browser_type = fs::read_to_string(profile_dir.join("browser.type")).unwrap_or_default();
     
     let child = if cfg!(target_os = "windows") {
-        if browser_type == "firefox" {
-             Command::new("cmd")
-                .args(&["/C", "start", "", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url])
-                .spawn()
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
-                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
-        } else {
-             // Try standard chromium (Chrome/Edge)
-             Command::new("cmd")
-                .args(&["/C", "start", "", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url]).spawn())
-                .map_err(|e| format!("Failed to launch kiosk: {}", e))?
+        let browser_to_try = if browser_type == "firefox" { vec!["firefox", "chrome", "edge"] } else { vec!["chrome", "edge", "firefox"] };
+        let mut final_child = None;
+        
+        for b_type in browser_to_try {
+            if let Some(exe) = find_browser_exe(b_type) {
+                let mut cmd = Command::new(exe);
+                if b_type == "firefox" {
+                    cmd.args(&["-kiosk", "-new-window", "-profile", &profile_str, &url]);
+                } else {
+                    cmd.args(&["--kiosk", &format!("--user-data-dir={}", profile_str), &url]);
+                    if b_type == "edge" {
+                        cmd.arg("--edge-kiosk-type=fullscreen");
+                    }
+                }
+                
+                if let Ok(c) = cmd.spawn() {
+                    final_child = Some(c);
+                    break;
+                }
+            }
         }
+        
+        final_child.ok_or_else(|| "Nenhum navegador suportado encontrado ou falha ao iniciar.".to_string())?
     } else {
         if browser_type == "firefox" {
              Command::new("firefox")

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Search, X, Monitor, Loader2, Cpu } from "lucide-react";
+import { Search, X, Monitor, Loader2, Cpu, FileSearch } from "lucide-react";
 import { useTranslation } from "../hooks/useTranslation";
 
 interface SystemApp {
@@ -13,9 +13,10 @@ interface SystemApp {
 interface SystemAppPickerProps {
     onSelect: (app: SystemApp) => void;
     onClose: () => void;
+    onManualPick?: () => void;
 }
 
-export function SystemAppPicker({ onSelect, onClose }: SystemAppPickerProps) {
+export function SystemAppPicker({ onSelect, onClose, onManualPick }: SystemAppPickerProps) {
     const { t } = useTranslation();
     const [apps, setApps] = useState<SystemApp[]>([]);
     const [search, setSearch] = useState("");
@@ -108,8 +109,17 @@ export function SystemAppPicker({ onSelect, onClose }: SystemAppPickerProps) {
                     )}
                 </div>
 
-                <footer className="p-8 border-t border-white/5 bg-dracula-bg/40 text-center">
-                    <p className="text-[10px] text-dracula-fg/10 font-black uppercase tracking-[0.4em] leading-relaxed">
+                <footer className="p-8 border-t border-white/5 bg-dracula-bg/40 flex flex-col items-center gap-6">
+                    {onManualPick && (
+                        <button 
+                            onClick={onManualPick}
+                            className="flex items-center gap-3 px-8 py-4 bg-dracula-purple/10 hover:bg-dracula-purple/20 border border-dracula-purple/30 rounded-full text-dracula-purple text-sm font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg group"
+                        >
+                            <FileSearch size={18} className="group-hover:scale-110 transition-transform" />
+                            Navegar manualmente e escolher arquivo (.exe)
+                        </button>
+                    )}
+                    <p className="text-[10px] text-dracula-fg/10 font-black uppercase tracking-[0.4em] leading-relaxed text-center">
                         Os ícones serão extraídos automaticamente <br/> após a seleção do item.
                     </p>
                 </footer>

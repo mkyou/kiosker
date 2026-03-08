@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { MediaCard } from "../components/MediaCard";
 import { AddEntryForm } from "../components/AddEntryForm";
-import { Plus, Gamepad2, FileSearch, Globe } from "lucide-react";
+import { Plus, Gamepad2, Globe } from "lucide-react";
 import { SystemAppPicker } from "../components/SystemAppPicker";
 import { useTranslation } from "../hooks/useTranslation";
 
@@ -261,19 +261,8 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                 <SystemAppPicker 
                     onSelect={handleSystemAppSelect} 
                     onClose={() => setShowSystemAppPicker(false)} 
+                    onManualPick={handlePickExecutable}
                 />
-            )}
-
-            {showSystemAppPicker && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[70] flex justify-center">
-                    <button 
-                        onClick={handlePickExecutable}
-                        className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-white font-medium transition-all shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-md hover:scale-105 active:scale-95"
-                    >
-                        <FileSearch size={18} />
-                        Procurar arquivo manualmente...
-                    </button>
-                </div>
             )}
         </div>
     );

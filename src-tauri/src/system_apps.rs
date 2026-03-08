@@ -38,17 +38,45 @@ pub fn get_system_apps() -> Result<Vec<SystemAppEntry>, String> {
     #[cfg(target_os = "windows")]
     {
         let mut win_paths = Vec::new();
-        if let Some(program_data) = std::env::var_os("PROGRAMDATA") {
-            win_paths.push(Path::new(&program_data).join("Microsoft\\Windows\\Start Menu\\Programs"));
-        }
+
+        // Standard APPDATA always exists on current user's profile
         if let Some(app_data) = std::env::var_os("APPDATA") {
             win_paths.push(Path::new(&app_data).join("Microsoft\\Windows\\Start Menu\\Programs"));
         }
 
-        for path in win_paths {
-            if path.exists() {
-                scan_windows_dir_recursive(&path, &mut apps);
+        // Iterate through all possible drive letters to find shared Start Menu and common install dirs
+        for drive_letter in (b'C'..=b'Z').map(|b| b as char) {
+            let drive_prefix = format!("{}:\\", drive_letter);
+            let drive_path = Path::new(&drive_prefix);
+            
+            if drive_path.exists() {
+                // Check Global Start Menu (ProgramData)
+                let p_data = drive_path.join("ProgramData\\Microsoft\\Windows\\Start Menu\\Programs");
+                if p_data.exists() {
+                    win_paths.push(p_data);
+                }
+
+                // We don't scan all Program Files recursive (too slow), but we can scan the top level
+                let p_files = drive_path.join("Program Files");
+                if p_files.exists() {
+                    scan_windows_dir_recursive(&p_files, &mut apps, 1); // Limit depth for speed
+                }
+                
+                let p_files_x86 = drive_path.join("Program Files (x86)");
+                if p_files_x86.exists() {
+                    scan_windows_dir_recursive(&p_files_x86, &mut apps, 1);
+                }
+
+                // Steam/Games are often in the root or common folders
+                let steam = drive_path.join("SteamLibrary\\steamapps\\common");
+                if steam.exists() {
+                    scan_windows_dir_recursive(&steam, &mut apps, 2);
+                }
             }
+        }
+
+        for path in win_paths {
+            scan_windows_dir_recursive(&path, &mut apps, 5); // Start Menu can be deeper
         }
     }
 
@@ -73,12 +101,14 @@ fn scan_linux_dir_for_apps(path: PathBuf, apps: &mut Vec<SystemAppEntry>) {
 }
 
 #[cfg(target_os = "windows")]
-fn scan_windows_dir_recursive(path: &Path, apps: &mut Vec<SystemAppEntry>) {
+fn scan_windows_dir_recursive(path: &Path, apps: &mut Vec<SystemAppEntry>, depth: u32) {
+    if depth == 0 { return; }
+    
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let p = entry.path();
             if p.is_dir() {
-                scan_windows_dir_recursive(&p, apps);
+                scan_windows_dir_recursive(&p, apps, depth - 1);
             } else if p.extension().map_or(false, |ext| ext == "lnk" || ext == "exe") {
                 let name = p.file_stem().unwrap_or_default().to_string_lossy().into_owned();
                 apps.push(SystemAppEntry {
