@@ -281,6 +281,11 @@ pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
     });
 }
 
+#[tauri::command]
+pub fn kill_all_kiosks(state: State<'_, AppState>) {
+    kill_kiosk_browsers(Some(&state));
+}
+
 pub fn kill_kiosk_browsers(state: Option<&State<'_, AppState>>) {
     let mut system = System::new_all();
     system.refresh_all();
@@ -332,17 +337,17 @@ pub fn launch_kiosk(app_handle: AppHandle, state: State<'_, AppState>, url: Stri
     let child = if cfg!(target_os = "windows") {
         if browser_type == "firefox" {
              Command::new("cmd")
-                .args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url])
+                .args(&["/C", "start", "", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url])
                 .spawn()
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
                 .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         } else {
              // Try standard chromium (Chrome/Edge)
              Command::new("cmd")
-                .args(&["/C", "start", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
-                .or_else(|_| Command::new("cmd").args(&["/C", "start", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url]).spawn())
+                .args(&["/C", "start", "", "chrome", "--kiosk", &format!("--user-data-dir={}", profile_str), &url]).spawn()
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "msedge", "--kiosk", "--edge-kiosk-type=fullscreen", &format!("--user-data-dir={}", profile_str), &url]).spawn())
+                .or_else(|_| Command::new("cmd").args(&["/C", "start", "", "firefox", "-kiosk", "-new-window", "-profile", &profile_str, &url]).spawn())
                 .map_err(|e| format!("Failed to launch kiosk: {}", e))?
         }
     } else {

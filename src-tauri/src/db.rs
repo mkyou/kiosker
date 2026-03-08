@@ -180,7 +180,7 @@ pub async fn export_database(app_handle: AppHandle) -> std::result::Result<Strin
     let file_path = app_handle.dialog().file().set_title("Exportar Biblioteca").set_file_name("kiosker_backup.sqlite").blocking_save_file();
     
     if let Some(dest) = file_path {
-        fs::copy(&db_path, dest.to_string()).map_err(|e| e.to_string())?;
+        fs::copy(&db_path, dest.path()).map_err(|e| e.to_string())?;
         Ok("Biblioteca exportada com sucesso!".to_string())
     } else {
         Err("Operação cancelada.".to_string())
@@ -197,19 +197,25 @@ pub async fn import_database(app_handle: AppHandle, state: State<'_, AppState>) 
         let app_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
         let db_path = app_dir.join("kiosker.sqlite");
         
-        // We need to close the connection to overwrite the file safely.
-        // In this simple architecture, we just overwrite and tell the user to restart or reload.
-        // Actually, we can just close the mutex guard.
+        // On Windows, the file is locked while the Connection is open.
+        // We replace the connection with a temporary in-memory one to close the file.
         {
             let mut conn = state.db.lock().map_err(|e| e.to_string())?;
-            // Drop connection by replacing it with a new memory one temporarily if needed, 
-            // but just dropping the lock might not be enough if the file is physically locked by the process.
-            // Rusqlite usually keeps it open.
-            // A more robust way in Tauri is to just overwrite it and then app_handle.restart().
+            *conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         }
         
-        fs::copy(src.to_string(), &db_path).map_err(|e| e.to_string())?;
-        Ok("Biblioteca importada! Reinicie a aplicação para aplicar as mudanças.".to_string())
+        // Small delay to ensure the OS releases the file lock
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        fs::copy(src.path(), &db_path).map_err(|e| e.to_string())?;
+        
+        // Re-initialize the connection to the new database file
+        {
+            let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+            *conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+        }
+
+        Ok("Biblioteca importada com sucesso!".to_string())
     } else {
         Err("Operação cancelada.".to_string())
     }

@@ -69,6 +69,7 @@ pub fn run() {
             processes::get_active_targets,
             processes::kill_target,
             processes::resolve_system_app_icon,
+            processes::kill_all_kiosks,
             browser_profile::run_browser_migration,
             system_status::get_system_status,
             system_status::open_wifi_settings

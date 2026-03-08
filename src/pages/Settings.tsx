@@ -65,17 +65,17 @@ export function Settings() {
     };
 
     return (
-        <div className="flex flex-col w-full h-full p-12 md:p-20 overflow-y-auto animate-fade-in-up [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className="flex flex-col w-full h-full p-8 md:p-12 overflow-y-auto animate-fade-in-up [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             {/* The Toolbar already indicates we are in Settings, so we skip the redundant header */}
-            <div className="pt-8 w-full max-w-[1700px] grid grid-cols-1 xl:grid-cols-2 gap-12 pb-32">
+            <div className="pt-4 w-full max-w-[1700px] grid grid-cols-1 xl:grid-cols-2 gap-8 pb-32">
                 {/* Browser Selection */}
-                <div className="apple-glass p-12 squircle-lg flex flex-col h-full relative overflow-hidden">
+                <div className="apple-glass p-8 squircle-lg flex flex-col h-full relative overflow-hidden">
                     <div className="mb-10">
                         <div className="flex items-center gap-4 mb-4">
                             <Monitor className="text-dracula-cyan w-6 h-6" />
                             <h3 className="text-3xl font-display font-black">{t('settings.browser.title')}</h3>
                         </div>
-                        <p className="text-dracula-fg/40 text-lg leading-relaxed font-sans max-w-xl">
+                        <p className="text-dracula-fg/40 text-base leading-relaxed font-sans max-w-xl">
                             {t('settings.browser.desc')}
                         </p>
                     </div>
@@ -150,9 +150,9 @@ export function Settings() {
                 </div>
 
                 {/* Right side group */}
-                <div className="space-y-12 flex flex-col h-full">
+                <div className="space-y-8 flex flex-col h-full">
                     {/* Autostart */}
-                    <div className="apple-glass p-12 squircle-lg border-white/5">
+                    <div className="apple-glass p-8 squircle-lg border-white/5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-10">
                             <div className="max-w-md">
                                 <h3 className="text-3xl font-display font-black mb-3">{t('settings.startup.title')}</h3>
@@ -174,9 +174,9 @@ export function Settings() {
                     </div>
 
                     {/* Data Section */}
-                    <div className="apple-glass p-12 squircle-lg flex-1">
+                    <div className="apple-glass p-8 squircle-lg flex-1">
                         <h3 className="text-3xl font-display font-black mb-3">{t('settings.data.title')}</h3>
-                        <p className="text-dracula-fg/40 text-lg mb-12 font-sans">{t('settings.data.desc')}</p>
+                        <p className="text-dracula-fg/40 text-base mb-12 font-sans">{t('settings.data.desc')}</p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <button 
@@ -204,7 +204,7 @@ export function Settings() {
                 </div>
 
                 {/* Shortcuts Table */}
-                <div className="apple-glass p-12 squircle-lg xl:col-span-2">
+                <div className="apple-glass p-8 squircle-lg xl:col-span-2">
                     <div className="mb-12 flex items-center gap-4">
                         <Command className="text-dracula-pink w-8 h-8" />
                         <div>
@@ -270,7 +270,7 @@ export function Settings() {
                 </div>
 
                 {/* Language Selection */}
-                <div className="apple-glass p-12 squircle-lg xl:col-span-2 border-white/10">
+                <div className="apple-glass p-8 squircle-lg xl:col-span-2 border-white/10">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-12">
                         <div className="max-w-xl">
                             <h3 className="text-4xl font-display font-black mb-4 tracking-tighter">{t('settings.language.title')}</h3>

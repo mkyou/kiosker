@@ -133,7 +133,7 @@ export function useSpatialNavigation() {
                 // Triple right click detected!
                 rightClickCount.current = 0; // reset
                 import("@tauri-apps/api/core").then(({ invoke }) => {
-                    invoke("kill_kiosk_browsers").catch(console.error);
+                    invoke("kill_all_kiosks").catch(console.error);
                 });
             }
         };

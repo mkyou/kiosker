@@ -63,8 +63,11 @@ fn find_firefox_profile_in_dir(path: &Path) -> Option<PathBuf> {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let p = entry.path();
-            if p.is_dir() && p.to_string_lossy().contains(".default-release") {
-                return Some(p);
+            if p.is_dir() {
+                let name = p.to_string_lossy();
+                if name.contains(".default-release") || name.contains(".default") {
+                    return Some(p);
+                }
             }
         }
     }
