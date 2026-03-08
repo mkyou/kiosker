@@ -37,7 +37,7 @@
       "deb": {
         "depends": []
       },
-      "appImage": {}
+      "appimage": {}
     }
   }
 }
