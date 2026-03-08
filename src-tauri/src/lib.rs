@@ -23,18 +23,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_shortcuts(["CommandOrControl+Shift+Q", "Shift+F10"])
-                .map(|b| b.with_handler(|app, shortcut, event| {
+                .with_shortcuts(["CommandOrControl+Shift+Q"])
+                .map(|b| b.with_handler(|app, _shortcut, event| {
                     if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        let shortcut_str = shortcut.to_string();
-                        if shortcut_str.contains("Shift+Q") {
-                             let state = app.state::<db::AppState>();
-                             processes::kill_kiosk_browsers(Some(&state));
-                        } else if shortcut_str.contains("F10") {
-                             if let Some(win) = app.get_webview_window("main") {
-                                 let _ = win.set_focus();
-                             }
-                        }
+                         let state = app.state::<db::AppState>();
+                         processes::kill_kiosk_browsers(Some(&state));
                     }
                 }))
                 .unwrap_or_else(|e| {
