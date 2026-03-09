@@ -23,7 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
-                .with_shortcuts(["CommandOrControl+Shift+Q"])
+                .with_shortcuts(["Control+Shift+Q"])
                 .map(|b| b.with_handler(|app, _shortcut, event| {
                     if event.state() == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                          let state = app.state::<db::AppState>();
@@ -60,6 +60,7 @@ pub fn run() {
             db::get_items,
             db::add_item,
             db::delete_item,
+            db::update_item,
             db::export_database,
             db::import_database,
             db::toggle_favorite,

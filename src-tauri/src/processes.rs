@@ -58,6 +58,9 @@ fn find_browser_exe(browser_type: &str) -> Option<std::path::PathBuf> {
     None
 }
 
+#[cfg(not(target_os = "windows"))]
+fn find_browser_exe(_: &str) -> Option<std::path::PathBuf> { None }
+
 #[tauri::command]
 pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String> {
     let p = Path::new(&path);
@@ -73,111 +76,85 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
     #[cfg(target_os = "windows")]
     {
         use std::ptr::null_mut;
-        use winapi::shared::windef::HICON;
-        use winapi::um::shellapi::ExtractIconExW;
-        use winapi::um::wingdi::{GetBitmapBits, GetObjectW, BITMAP};
-        use winapi::um::winuser::{DestroyIcon, GetIconInfo, ICONINFO};
+        use winapi::um::shellapi::{SHGetFileInfoW, SHGFI_ICON, SHGFI_LARGEICON, SHFILEINFOW};
+        use winapi::um::wingdi::{GetBitmapBits, GetObjectW, BITMAP, DeleteObject};
+        use winapi::um::winuser::{DestroyIcon, GetIconInfo};
 
         let path_wide: Vec<u16> = OsStr::new(&path)
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
-        let mut hicon_large: HICON = null_mut();
-        let mut hicon_small: HICON = null_mut();
-
-        // Extract the first icon (index 0)
-        let extracted = unsafe {
-            ExtractIconExW(
+        
+        let mut shfi: SHFILEINFOW = unsafe { std::mem::zeroed() };
+        let res = unsafe {
+            SHGetFileInfoW(
                 path_wide.as_ptr(),
-                0, // First icon
-                &mut hicon_large,
-                &mut hicon_small,
-                1,
+                0,
+                &mut shfi,
+                std::mem::size_of::<SHFILEINFOW>() as u32,
+                SHGFI_ICON | SHGFI_LARGEICON,
             )
         };
 
-        if extracted > 0 {
-            // Prefer large
-            let hicon = if !hicon_large.is_null() {
-                hicon_large
-            } else {
-                hicon_small
-            };
+        if res != 0 && !shfi.hIcon.is_null() {
+            let hicon = shfi.hIcon;
+            unsafe {
+                let mut icon_info = std::mem::zeroed();
+                if GetIconInfo(hicon, &mut icon_info) != 0 {
+                    let mut bm: BITMAP = std::mem::zeroed();
+                    if !icon_info.hbmColor.is_null() && GetObjectW(
+                        icon_info.hbmColor as *mut _,
+                        std::mem::size_of::<BITMAP>() as i32,
+                        &mut bm as *mut _ as *mut _,
+                    ) != 0
+                    {
+                        let width = bm.bmWidth as u32;
+                        let height = bm.bmHeight as u32;
+                        let bytes_per_pixel = (bm.bmBitsPixel / 8) as usize;
+                        let buffer_size = (width * height) as usize * bytes_per_pixel;
+                        let mut buffer = vec![0u8; buffer_size];
 
-            if !hicon.is_null() {
-                unsafe {
-                    let mut icon_info: ICONINFO = std::mem::zeroed();
-                    if GetIconInfo(hicon, &mut icon_info) != 0 {
-                        let mut bm: BITMAP = std::mem::zeroed();
-                        if GetObjectW(
-                            icon_info.hbmColor as *mut _,
-                            std::mem::size_of::<BITMAP>() as i32,
-                            &mut bm as *mut _ as *mut _,
-                        ) != 0
-                        {
-                            let width = bm.bmWidth as u32;
-                            let height = bm.bmHeight as u32;
-                            let bytes_per_pixel = (bm.bmBitsPixel / 8) as usize;
-                            let buffer_size = (width * height) as usize * bytes_per_pixel;
-                            let mut buffer = vec![0u8; buffer_size];
+                        let copied = GetBitmapBits(
+                            icon_info.hbmColor,
+                            buffer_size as i32,
+                            buffer.as_mut_ptr() as *mut _,
+                        );
 
-                            let copied = GetBitmapBits(
-                                icon_info.hbmColor,
-                                buffer_size as i32,
-                                buffer.as_mut_ptr() as *mut _,
-                            );
-
-                            if copied > 0 {
-                                // GDI bitmaps are usually BGRA. `image` crate can encode
-                                // using standard RGB(A).
-                                let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
-                                for i in 0..(width * height) as usize {
-                                    let bgra_idx = i * bytes_per_pixel;
-                                    let rgba_idx = i * 4;
-                                    if bytes_per_pixel >= 3 {
-                                        rgba_buffer[rgba_idx] = buffer[bgra_idx + 2]; // R <- R
-                                        rgba_buffer[rgba_idx + 1] = buffer[bgra_idx + 1]; // G <- G
-                                        rgba_buffer[rgba_idx + 2] = buffer[bgra_idx]; // B <- B
-                                                                                      // A
-                                        if bytes_per_pixel == 4 {
-                                            rgba_buffer[rgba_idx + 3] = buffer[bgra_idx + 3];
-                                        } else {
-                                            rgba_buffer[rgba_idx + 3] = 255;
-                                        }
-                                    }
-                                }
-
-                                if let Some(img) =
-                                    image::RgbaImage::from_raw(width, height, rgba_buffer)
-                                {
-                                    let mut cursor = std::io::Cursor::new(Vec::new());
-                                    // Try encode as PNG
-                                    if let Ok(_) = image::DynamicImage::ImageRgba8(img)
-                                        .write_to(&mut cursor, image::ImageFormat::Png)
-                                    {
-                                        use base64::Engine;
-                                        let b64 = base64::engine::general_purpose::STANDARD
-                                            .encode(cursor.into_inner());
-                                        icon_url = Some(format!("data:image/png;base64,{}", b64));
+                        if copied > 0 {
+                            let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
+                            for i in 0..(width * height) as usize {
+                                let bgra_idx = i * bytes_per_pixel;
+                                let rgba_idx = i * 4;
+                                if bytes_per_pixel >= 3 {
+                                    rgba_buffer[rgba_idx] = buffer[bgra_idx + 2]; // R
+                                    rgba_buffer[rgba_idx + 1] = buffer[bgra_idx + 1]; // G
+                                    rgba_buffer[rgba_idx + 2] = buffer[bgra_idx]; // B
+                                    if bytes_per_pixel == 4 {
+                                        rgba_buffer[rgba_idx + 3] = buffer[bgra_idx + 3]; // A
+                                    } else {
+                                        rgba_buffer[rgba_idx + 3] = 255;
                                     }
                                 }
                             }
-                        }
-                        // Cleanup GDI objects
-                        if !icon_info.hbmColor.is_null() {
-                            winapi::um::wingdi::DeleteObject(icon_info.hbmColor as *mut _);
-                        }
-                        if !icon_info.hbmMask.is_null() {
-                            winapi::um::wingdi::DeleteObject(icon_info.hbmMask as *mut _);
+
+                            if let Some(img) = image::RgbaImage::from_raw(width, height, rgba_buffer) {
+                                let mut cursor = std::io::Cursor::new(Vec::new());
+                                if let Ok(_) = image::DynamicImage::ImageRgba8(img)
+                                    .write_to(&mut cursor, image::ImageFormat::Png)
+                                {
+                                    use base64::Engine;
+                                    let b64 = base64::engine::general_purpose::STANDARD
+                                        .encode(cursor.into_inner());
+                                    icon_url = Some(format!("data:image/png;base64,{}", b64));
+                                }
+                            }
                         }
                     }
-                    if !hicon_large.is_null() {
-                        DestroyIcon(hicon_large);
-                    }
-                    if !hicon_small.is_null() {
-                        DestroyIcon(hicon_small);
-                    }
+                    // Cleanup GDI objects from GetIconInfo
+                    if !icon_info.hbmColor.is_null() { DeleteObject(icon_info.hbmColor as *mut _); }
+                    if !icon_info.hbmMask.is_null() { DeleteObject(icon_info.hbmMask as *mut _); }
                 }
+                DestroyIcon(hicon);
             }
         }
     }
@@ -293,6 +270,11 @@ pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
 
     let app_handle_inner = app_handle.clone();
     std::thread::spawn(move || {
+        #[cfg(target_os = "windows")]
+        unsafe {
+            winapi::um::winuser::SetProcessDPIAware();
+        }
+
         if let Err(error) = listen(move |event: Event| {
             if let EventType::ButtonPress(Button::Left) = event.event_type {
                 let now = SystemTime::now()

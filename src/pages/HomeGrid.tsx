@@ -144,7 +144,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                 <span className="text-xl">⭐</span>
                                 Favoritos
                             </h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-10 place-items-start">
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-10 place-items-start">
                                 {favoriteItems.map((item) => (
                                     <MediaCard
                                         key={`fav-${item.id}`}
@@ -166,10 +166,10 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                     {/* Web Section */}
                     {webItems.length > 0 && (
                         <section>
-                            <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/60 mb-6 flex items-center gap-3">
-                                <span className="opacity-50">#</span> {t('home.web')}
+                            <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
+                                <span className="opacity-50 text-xl">#</span> {t('home.web')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-8">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
                                 {webItems.map((item) => (
                                     <MediaCard
                                         key={`web-${item.id}`}
@@ -201,10 +201,10 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                     {/* Apps Section */}
                     {appItems.length > 0 && (
                         <section>
-                            <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/60 mb-6 flex items-center gap-3">
-                                <span className="opacity-50">#</span> {t('home.apps')}
+                            <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
+                                <span className="opacity-50 text-xl">#</span> {t('home.apps')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-8">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
                                 {appItems.map((item) => (
                                     <MediaCard
                                         key={`app-${item.id}`}

@@ -167,6 +167,17 @@ pub fn delete_item(state: State<'_, AppState>, id: i32) -> std::result::Result<(
 }
 
 #[tauri::command]
+pub fn update_item(state: State<'_, AppState>, id: i32, title: String) -> std::result::Result<(), String> {
+    let conn = state.db.lock().map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE items SET title = ?1 WHERE id = ?2",
+        (&title, id),
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn export_database(app_handle: AppHandle) -> std::result::Result<String, String> {
     use tauri_plugin_dialog::DialogExt;
     

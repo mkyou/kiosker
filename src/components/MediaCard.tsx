@@ -18,7 +18,10 @@ interface MediaCardProps {
 export function MediaCard({ id, title, target_path, item_type, background_url, is_favorite, isRunning, onKill, onRefresh }: MediaCardProps) {
     const { t } = useTranslation();
     const [showMenu, setShowMenu] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [newTitle, setNewTitle] = useState(title);
     const menuRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (showMenu && menuRef.current) {
@@ -27,6 +30,13 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
             setTimeout(() => firstBtn?.focus(), 50);
         }
     }, [showMenu]);
+
+    useEffect(() => {
+        if (isEditing && inputRef.current) {
+            inputRef.current.focus();
+            inputRef.current.select();
+        }
+    }, [isEditing]);
 
     const handleBlur = (e: React.FocusEvent) => {
         if (showMenu && !e.currentTarget.contains(e.relatedTarget as Node)) {
@@ -72,6 +82,27 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
         } catch (err) {
             console.error("Favorite error:", err);
         }
+        setShowMenu(false);
+    };
+
+    const handleUpdateTitle = async () => {
+        if (newTitle.trim() === "" || newTitle === title) {
+            setIsEditing(false);
+            return;
+        }
+        try {
+            await invoke("update_item", { id, title: newTitle });
+            if (onRefresh) onRefresh();
+        } catch (err) {
+            console.error("Update title error:", err);
+        }
+        setIsEditing(false);
+    };
+
+    const handleStartEdit = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setNewTitle(title);
+        setIsEditing(true);
         setShowMenu(false);
     };
 
@@ -142,10 +173,29 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
 
                 {/* Floating Title */}
                 <div className="absolute bottom-0 left-0 right-0 p-5 z-20">
-                    <h3 className="text-base md:text-lg lg:text-xl font-display font-black text-white leading-[1.1] drop-shadow-lg transform transition-transform duration-500 group-hover:translate-y-[-4px] group-focus:translate-y-[-4px] line-clamp-2 uppercase tracking-tight">
-                        {title}
-                    </h3>
-                    <div className="h-1 w-0 bg-dracula-purple group-hover:w-10 group-focus:w-10 transition-all duration-500 mt-2 rounded-full" />
+                    {isEditing ? (
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={newTitle}
+                            onChange={(e) => setNewTitle(e.target.value)}
+                            onBlur={handleUpdateTitle}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") handleUpdateTitle();
+                                if (e.key === "Escape") setIsEditing(false);
+                                e.stopPropagation();
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full bg-dracula-bg/80 backdrop-blur-md border-b-2 border-dracula-purple text-white font-display font-black p-1 focus:outline-none uppercase tracking-tight"
+                        />
+                    ) : (
+                        <>
+                            <h3 className="text-base md:text-lg lg:text-xl font-display font-black text-white leading-[1.1] drop-shadow-lg transform transition-transform duration-500 group-hover:translate-y-[-4px] group-focus:translate-y-[-4px] line-clamp-2 uppercase tracking-tight">
+                                {title}
+                            </h3>
+                            <div className="h-1 w-0 bg-dracula-purple group-hover:w-10 group-focus:w-10 transition-all duration-500 mt-2 rounded-full" />
+                        </>
+                    )}
                 </div>
 
             </motion.button>
@@ -196,6 +246,14 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                         >
                             <span className="text-sm group-hover/btn:scale-125 transition-transform">{is_favorite ? '★' : '☆'}</span>
                             <span className="truncate">{is_favorite ? 'REMOVER FAVORITO' : 'FAVORITAR'}</span>
+                        </button>
+
+                        <button
+                            onClick={handleStartEdit}
+                            className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-dracula-cyan/10 text-dracula-cyan border border-dracula-cyan/20 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-dracula-cyan/20 group/btn"
+                        >
+                            <span className="text-sm group-hover/btn:scale-125 transition-transform">✎</span>
+                            <span className="truncate">EDITAR</span>
                         </button>
 
                         <button
