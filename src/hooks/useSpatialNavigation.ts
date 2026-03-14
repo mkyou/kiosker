@@ -5,8 +5,10 @@ type Direction = "up" | "down" | "left" | "right";
 export function useSpatialNavigation() {
     const gamepadRef = useRef<number | null>(null);
     const lastActionTime = useRef<number>(0);
-    const lastRightClickTime = useRef<number>(0);
-    const rightClickCount = useRef<number>(0);
+    const lastLeftClickTime = useRef<number>(0);
+    const leftClickCount = useRef<number>(0);
+    const gamepadComboCount = useRef<number>(0);
+    const lastGamepadComboTime = useRef<number>(0);
 
     const moveFocus = useCallback((direction: Direction) => {
         const activeElement = document.activeElement as HTMLElement | null;
@@ -32,8 +34,13 @@ export function useSpatialNavigation() {
         if (focusableElements.length === 0) return;
 
         if (!activeElement || !focusableElements.includes(activeElement)) {
-            // If no element is focused, focus the first one
-            focusableElements[0]?.focus();
+            // Find the most logical first element (usually first item in grid or first menu btn)
+            const firstElement = focusableElements[0];
+            if (firstElement) {
+                firstElement.focus();
+                // After focusing, if it's not a scrollable area, we might want to move 
+                // but for now, focusing is the first step.
+            }
             return;
         }
 
@@ -62,23 +69,53 @@ export function useSpatialNavigation() {
 
             let isValidDir = false;
 
-            if (direction === "up" && dy < 0 && absDx <= absDy) {
+            if (direction === "up" && dy < 0 && absDx <= absDy * 4.0) {
                 isValidDir = true;
-            } else if (direction === "down" && dy > 0 && absDx <= absDy) {
+            } else if (direction === "down" && dy > 0 && absDx <= absDy * 2.0) {
                 isValidDir = true;
-            } else if (direction === "left" && dx < 0 && absDy <= absDx) {
+            } else if (direction === "left" && dx < 0 && absDy <= absDx * 2.0) {
                 isValidDir = true;
-            } else if (direction === "right" && dx > 0 && absDy <= absDx) {
+            } else if (direction === "right" && dx > 0 && absDy <= absDx * 2.0) {
                 isValidDir = true;
             }
 
             if (isValidDir) {
-                // Euclidean distance
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Modified distance calculation to favor staying in the same row/column
+                // For UP/DOWN, horizontal distance (dx) is penalized more
+                // For LEFT/RIGHT, vertical distance (dy) is penalized more
+                const weightX = (direction === "up" || direction === "down") ? 2.5 : 1.0;
+                const weightY = (direction === "left" || direction === "right") ? 2.5 : 1.0;
+                
+                const distance = Math.sqrt((dx * weightX) ** 2 + (dy * weightY) ** 2);
+                
                 if (distance < minDistance) {
                     minDistance = distance;
                     bestMatch = el;
                 }
+            }
+        }
+        
+        // Wrap around logic: if no match in that direction, try to wrap to the other side
+        if (!bestMatch) {
+            if (direction === "right") {
+                // Find element furthest to the left
+                bestMatch = focusableElements.reduce((prev, curr) => 
+                    curr.getBoundingClientRect().left < prev.getBoundingClientRect().left ? curr : prev
+                , focusableElements[0]);
+            } else if (direction === "left") {
+                // Find element furthest to the right
+                bestMatch = focusableElements.reduce((prev, curr) => 
+                    curr.getBoundingClientRect().right > prev.getBoundingClientRect().right ? curr : prev
+                , focusableElements[0]);
+            } else if (direction === "up") {
+                // User preferred NO wrap-around for UP (stay at top/header)
+                // But we can try to find the actual top-most element if we were somehow stuck
+                bestMatch = null; 
+            } else if (direction === "down") {
+                // Wrap around to the top
+                bestMatch = focusableElements.reduce((prev, curr) => 
+                    curr.getBoundingClientRect().top < prev.getBoundingClientRect().top ? curr : prev
+                , focusableElements[0]);
             }
         }
 
@@ -144,15 +181,15 @@ export function useSpatialNavigation() {
             if (e.button !== 0) return; // Only Left Click
             
             const now = Date.now();
-            if (now - lastRightClickTime.current > 1000) {
-                rightClickCount.current = 1;
+            if (now - lastLeftClickTime.current > 1000) {
+                leftClickCount.current = 1;
             } else {
-                rightClickCount.current += 1;
+                leftClickCount.current += 1;
             }
-            lastRightClickTime.current = now;
+            lastLeftClickTime.current = now;
 
-            if (rightClickCount.current === 3) {
-                rightClickCount.current = 0;
+            if (leftClickCount.current === 3) {
+                leftClickCount.current = 0;
                 import("@tauri-apps/api/core").then(({ invoke }) => {
                     invoke("kill_all_kiosks").catch(console.error);
                 });
@@ -171,31 +208,45 @@ export function useSpatialNavigation() {
         // Gamepad Polling Loop
         const pollGamepad = () => {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let activePad = null;
+            
             for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) {
-                    activePad = gamepads[i];
-                    break;
-                }
-            }
-
-            if (activePad) {
+                const activePad = gamepads[i];
+                if (!activePad) continue;
                 const now = Date.now();
-                // Simple debounce to avoid flying through the UI (200ms)
-                if (now - lastActionTime.current > 200) {
-                    // D-PAD: Up(12), Down(13), Left(14), Right(15)
+                // Simple debounce to avoid flying through the UI (150ms is usually sweet spot for responsiveness)
+                if (now - lastActionTime.current > 150) {
                     let handled = false;
+                    const threshold = 0.6;
+                    const axisX = activePad.axes[0] || 0;
+                    const axisY = activePad.axes[1] || 0;
+                    
+                    // Allow navigation from axes (often mapping for D-pad on some controllers)
+                    const up = activePad.buttons[12]?.pressed || axisY < -threshold;
+                    const down = activePad.buttons[13]?.pressed || axisY > threshold;
+                    const left = activePad.buttons[14]?.pressed || axisX < -threshold;
+                    const right = activePad.buttons[15]?.pressed || axisX > threshold;
 
-                    if (activePad.buttons[12]?.pressed) { moveFocus("up"); handled = true; }
-                    else if (activePad.buttons[13]?.pressed) { moveFocus("down"); handled = true; }
-                    else if (activePad.buttons[14]?.pressed) { moveFocus("left"); handled = true; }
-                    else if (activePad.buttons[15]?.pressed) { moveFocus("right"); handled = true; }
+                    if (up) { moveFocus("up"); handled = true; }
+                    else if (down) { moveFocus("down"); handled = true; }
+                    else if (left) { moveFocus("left"); handled = true; }
+                    else if (right) { moveFocus("right"); handled = true; }
 
-                    // L3 (10) + R3 (11) combo for Exit
+                    // L3 (10) + R3 (11) combo for Exit - 3x fast
                     else if (activePad.buttons[10]?.pressed && activePad.buttons[11]?.pressed) {
-                        import("@tauri-apps/api/core").then(({ invoke }) => {
-                            invoke("kill_all_kiosks").catch(console.error);
-                        });
+                        const nowCombo = Date.now();
+                        if (nowCombo - lastGamepadComboTime.current > 1000) {
+                            gamepadComboCount.current = 1;
+                        } else {
+                            gamepadComboCount.current += 1;
+                        }
+                        lastGamepadComboTime.current = nowCombo;
+
+                        if (gamepadComboCount.current >= 3) {
+                            gamepadComboCount.current = 0;
+                            import("@tauri-apps/api/core").then(({ invoke }) => {
+                                invoke("kill_all_kiosks").catch(console.error);
+                            });
+                        }
                         handled = true;
                     }
 
@@ -206,8 +257,28 @@ export function useSpatialNavigation() {
                         handled = true;
                     }
 
+                    // Context Menu (Y / Triangle = button 3 OR Start = button 9)
+                    else if (activePad.buttons[3]?.pressed || activePad.buttons[9]?.pressed) {
+                        const activeEl = document.activeElement as HTMLElement;
+                        if (activeEl) {
+                            // Try-catch and direct dispatch for responsiveness
+                            try {
+                                const event = new MouseEvent("contextmenu", {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    view: window,
+                                    clientX: 0, // Signal programmatic
+                                    clientY: 0
+                                });
+                                activeEl.dispatchEvent(event);
+                            } catch (e) { console.error("Gamepad context menu error", e) }
+                        }
+                        handled = true;
+                    }
+
                     if (handled) {
                         lastActionTime.current = now;
+                        break; // Stop processing other gamepads for this frame if one handled it
                     }
                 }
             }

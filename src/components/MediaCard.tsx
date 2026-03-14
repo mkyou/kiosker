@@ -13,11 +13,13 @@ interface MediaCardProps {
     isRunning?: boolean;
     onKill?: () => void;
     onRefresh?: () => void;
+    onDeleteRequest?: () => void;
 }
 
-export function MediaCard({ id, title, target_path, item_type, background_url, is_favorite, isRunning, onKill, onRefresh }: MediaCardProps) {
+export function MediaCard({ id, title, target_path, item_type, background_url, is_favorite, isRunning, onKill, onRefresh, onDeleteRequest }: MediaCardProps) {
     const { t } = useTranslation();
-    const [showMenu, setShowMenu] = useState(false);
+    const [menuPos, setMenuPos] = useState<{ x: number; y: number } | null>(null);
+    const showMenu = menuPos !== null;
     const [isEditing, setIsEditing] = useState(false);
     const [newTitle, setNewTitle] = useState(title);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -40,7 +42,7 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
 
     const handleBlur = (e: React.FocusEvent) => {
         if (showMenu && !e.currentTarget.contains(e.relatedTarget as Node)) {
-            setShowMenu(false);
+            setMenuPos(null);
         }
     };
 
@@ -57,21 +59,10 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
         }
     };
 
-    const handleDelete = async (e?: React.MouseEvent) => {
-        if (e) e.stopPropagation();
-        try {
-            await invoke("delete_item", { id });
-            if (onRefresh) onRefresh();
-        } catch (err) {
-            console.error("Delete error:", err);
-        }
-        setShowMenu(false);
-    };
-
     const handleKill = (e?: React.MouseEvent) => {
         if (e) e.stopPropagation();
         if (onKill) onKill();
-        setShowMenu(false);
+        setMenuPos(null);
     }
 
     const handleToggleFavorite = async (e?: React.MouseEvent) => {
@@ -82,7 +73,7 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
         } catch (err) {
             console.error("Favorite error:", err);
         }
-        setShowMenu(false);
+        setMenuPos(null);
     };
 
     const handleUpdateTitle = async () => {
@@ -103,12 +94,35 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
         e.stopPropagation();
         setNewTitle(title);
         setIsEditing(true);
-        setShowMenu(false);
+        setMenuPos(null);
     };
 
-    const handleContextMenu = (e?: React.MouseEvent | React.KeyboardEvent) => {
+    const handleContextMenu = (e?: React.MouseEvent | React.KeyboardEvent | MouseEvent) => {
         if (e) e.preventDefault();
-        setShowMenu(true);
+        
+        let x = window.innerWidth / 2 - 80;
+        let y = window.innerHeight / 2 - 150;
+
+        // Try to find the exact target element to position near it
+        const target = (e?.currentTarget || e?.target) as HTMLElement;
+
+        if (e && 'clientX' in e && (e as MouseEvent).clientX !== 0) {
+            x = (e as MouseEvent).clientX;
+            y = (e as MouseEvent).clientY;
+        } else if (target) {
+            // Keyboard or Programmatic trigger
+            const rect = target.getBoundingClientRect();
+            x = rect.left + rect.width / 2;
+            y = rect.top + rect.height / 2;
+        }
+        
+        // Ensure menu stays within viewport
+        if (x + 170 > window.innerWidth) x = window.innerWidth - 170;
+        if (y + 350 > window.innerHeight) y = window.innerHeight - 350;
+        if (x < 10) x = 10;
+        if (y < 10) y = 10;
+
+        setMenuPos({ x, y });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -202,24 +216,25 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
 
             {/* Context Menu Overlay */}
             <AnimatePresence>
-                {showMenu && (
+                {menuPos && (
                     <motion.div
                         ref={menuRef}
                         initial={{ opacity: 0, x: 10, scale: 0.95 }}
                         animate={{ opacity: 1, x: 0, scale: 1 }}
                         exit={{ opacity: 0, x: 10, scale: 0.95 }}
                         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        onMouseLeave={() => setShowMenu(false)}
-                        onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
+                        onMouseLeave={() => setMenuPos(null)}
+                        onClick={(e) => { e.stopPropagation(); setMenuPos(null); }}
                         role="menu"
-                        className="absolute z-[100] left-full ml-4 top-0 flex flex-col items-center justify-start p-3 gap-2 bg-dracula-surface/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-40 max-h-[110%] overflow-y-auto"
+                        style={{ left: menuPos.x, top: menuPos.y }}
+                        className="fixed z-[9999] flex flex-col items-center justify-start p-3 gap-2 bg-dracula-surface/90 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl w-40 max-h-[110%] overflow-y-auto"
                     >
                         <button
-                            onClick={(e) => { e.stopPropagation(); setShowMenu(false); }}
-                            className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-white/5 text-dracula-fg border border-white/10 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-white/10 hover:border-white/20 group/btn"
+                            onClick={(e) => { e.stopPropagation(); setMenuPos(null); }}
+                            className="w-full flex items-center justify-center gap-3 py-3.5 px-3 rounded-2xl bg-white/5 text-dracula-fg border border-white/10 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-white/10 hover:border-white/20 group/btn"
                         >
                             <span className="text-sm group-hover/btn:scale-125 transition-transform">✕</span>
-                            <span className="truncate">VOLTAR</span>
+                            <span className="truncate">{t('common.back')}</span>
                         </button>
 
                         <button
@@ -245,7 +260,7 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                             className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-dracula-yellow/10 text-dracula-yellow border border-dracula-yellow/20 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-dracula-yellow/20 group/btn"
                         >
                             <span className="text-sm group-hover/btn:scale-125 transition-transform">{is_favorite ? '★' : '☆'}</span>
-                            <span className="truncate">{is_favorite ? 'REMOVER FAVORITO' : 'FAVORITAR'}</span>
+                            <span className="truncate">{is_favorite ? t('common.remove_favorite') : t('common.favorite')}</span>
                         </button>
 
                         <button
@@ -253,11 +268,11 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                             className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-dracula-cyan/10 text-dracula-cyan border border-dracula-cyan/20 font-bold uppercase tracking-wider text-[9px] transition-all hover:bg-dracula-cyan/20 group/btn"
                         >
                             <span className="text-sm group-hover/btn:scale-125 transition-transform">✎</span>
-                            <span className="truncate">EDITAR</span>
+                            <span className="truncate">{t('common.edit')}</span>
                         </button>
-
+                        
                         <button
-                            onClick={handleDelete}
+                            onClick={(e) => { e.stopPropagation(); if (onDeleteRequest) onDeleteRequest(); setMenuPos(null); }}
                             className="w-full flex items-center justify-center gap-3 py-3 px-3 rounded-2xl bg-white/5 text-dracula-fg/50 border border-transparent font-bold uppercase tracking-wider text-[8px] transition-all hover:text-dracula-red hover:bg-dracula-red/10 hover:border-dracula-red/30 group/btn focus-ring"
                         >
                             <span className="text-sm group-hover/btn:scale-125 transition-transform">🗑</span>
@@ -267,6 +282,5 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
                 )}
             </AnimatePresence>
         </div>
-
     );
 }
