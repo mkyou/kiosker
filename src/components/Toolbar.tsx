@@ -18,7 +18,7 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
         const fetchStatus = async () => {
              try {
                  const status = await invoke<typeof sysStatus>("get_system_status");
-                 setSysStatus(status);
+                 if (status) setSysStatus(status);
              } catch (e) {
                  console.error("Failed to load generic system status", e);
              }
@@ -62,6 +62,12 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
                     <span className="font-display font-black text-2xl tracking-tighter text-dracula-fg opacity-80 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                         KIOSKER<span className="hidden lg:inline text-dracula-purple ml-1">.</span>
                     </span>
+                    <div className="ml-6 px-4 py-1.5 bg-dracula-purple/10 border border-dracula-purple/20 rounded-full flex items-center gap-2 animate-fade-in">
+                        <div className="w-1.5 h-1.5 rounded-full bg-dracula-purple animate-pulse" />
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-dracula-purple/80" data-testid="active-section-label">
+                            {activeTab === "home" ? t('home.start') : t('settings.title')}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Navigation Tabs (Centered in own space) */}
@@ -96,7 +102,7 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
                 <div className="flex-1 flex items-center justify-end gap-4 md:gap-10 relative z-10 pointer-events-auto overflow-hidden">
                     <div className="flex items-center gap-4 md:gap-6 text-dracula-fg/30">
                         <button onClick={handleWifiClick} className="flex items-center gap-2 hover:text-dracula-cyan transition-colors" title="Abrir configurações de rede">
-                            <Wifi size={20} strokeWidth={2.5} className={sysStatus.wifi_connected ? "text-dracula-green/60" : "text-dracula-pink/60"} />
+                            <Wifi size={20} strokeWidth={2.5} className={sysStatus?.wifi_connected ? "text-dracula-green/60" : "text-dracula-pink/60"} />
                         </button>
                         <div className="flex items-center gap-1 md:gap-2 pointer-events-none opacity-50 px-1 md:px-2 font-display">
                             {sysStatus.battery_percentage !== null && (

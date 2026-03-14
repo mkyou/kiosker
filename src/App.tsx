@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HomeGrid } from "./pages/HomeGrid";
+import { HomeGrid, KioskerItem } from "./pages/HomeGrid";
 import { Settings } from "./pages/Settings";
 import { BrowserPicker } from "./components/BrowserPicker";
 import { Toolbar } from "./components/Toolbar";
@@ -27,12 +27,12 @@ function App() {
      checkBrowser();
   }, []);
 
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<KioskerItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
 
   const fetchItems = async () => {
     try {
-      const result = await invoke<any[]>("get_items");
+      const result = await invoke<KioskerItem[]>("get_items");
       setItems(result);
     } catch (e) {
       console.error("Failed to fetch items:", e);

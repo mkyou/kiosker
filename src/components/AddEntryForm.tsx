@@ -4,10 +4,11 @@ import { Globe, X, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { useTranslation } from "../hooks/useTranslation";
 
 interface AddEntryFormProps {
-    onComplete: () => void;
+    onClose: () => void;
+    onRefresh: () => void;
 }
 
-export function AddEntryForm({ onComplete }: AddEntryFormProps) {
+export function AddEntryForm({ onClose, onRefresh }: AddEntryFormProps) {
     const { t } = useTranslation();
     const [urlsInput, setUrlsInput] = useState("");
     const [isChecking, setIsChecking] = useState(false);
@@ -58,11 +59,15 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                 }
             }
 
+            if (healthyUrls.length > 0) {
+                onRefresh();
+            }
+
             const failed = lines.filter(url => !healthyUrls.includes(url));
             if (failed.length > 0) {
                 setFailedUrls(failed);
             } else {
-                onComplete();
+                onClose();
             }
             setUrlsInput("");
         } catch (error) {
@@ -96,8 +101,9 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
 
             const remaining = failedUrls.filter(u => u !== url);
             setFailedUrls(remaining);
+            onRefresh();
             if (remaining.length === 0) {
-                onComplete();
+                onClose();
             }
         } catch (error) {
             console.error("Force add failed:", error);
@@ -108,7 +114,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-dracula-bg/60 backdrop-blur-[12px] animate-fade-in">
             <div className="relative w-full max-w-2xl apple-glass p-12 squircle-lg border-white/10 flex flex-col shadow-[0_50px_100px_rgba(0,0,0,0.5)]">
                 <button
-                    onClick={onComplete}
+                    onClick={onClose}
                     className="absolute top-8 right-8 p-3 text-dracula-fg/30 hover:text-dracula-fg rounded-full apple-glass transition-all hover:scale-110 active:scale-95 border-white/5"
                 >
                     <X className="w-6 h-6" />
@@ -120,7 +126,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                     </div>
                     <h3 className="text-4xl font-display font-black text-dracula-fg mb-4 tracking-tighter">{t('home.web')}</h3>
                     <p className="text-dracula-fg/40 text-lg font-sans leading-relaxed px-10">
-                        {t('settings.browser.desc')}
+                        {t('home.web_desc')}
                     </p>
                 </div>
 
@@ -139,7 +145,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                         placeholder="https://netflix.com&#10;https://youtube.com/tv"
                     />
                     <div className="absolute bottom-4 right-6 flex items-center gap-2 text-[10px] text-dracula-fg/10 font-black uppercase tracking-widest pointer-events-none group-focus-within/field:text-dracula-purple/30 transition-colors">
-                        Ctrl + Enter para enviar
+                        Ctrl + Enter
                     </div>
                 </div>
 
@@ -147,7 +153,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                     <div className="mb-8 apple-glass border-dracula-pink/20 bg-dracula-pink/5 squircle-md p-8 animate-shake">
                         <div className="flex items-center gap-3 mb-6">
                             <AlertTriangle className="text-dracula-pink w-6 h-6" />
-                            <h4 className="text-dracula-pink font-black uppercase tracking-widest text-sm">Atenção: Falha na verificação</h4>
+                            <h4 className="text-dracula-pink font-black uppercase tracking-widest text-sm">{t('entry_form.checking_alert')}</h4>
                         </div>
                         <ul className="flex flex-col gap-4">
                             {failedUrls.map((url, idx) => (
@@ -157,7 +163,7 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                                         onClick={() => handleForceAdd(url)}
                                         className="px-5 py-2.5 bg-dracula-purple/10 text-dracula-purple text-[10px] font-black uppercase tracking-widest squircle-md hover:bg-dracula-purple/20 transition-all border border-dracula-purple/20 active:scale-95"
                                     >
-                                        Adicionar mesmo assim
+                                        {t('common.confirm')}
                                     </button>
                                 </li>
                             ))}
@@ -174,12 +180,12 @@ export function AddEntryForm({ onComplete }: AddEntryFormProps) {
                     {isChecking ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Verificando links...</span>
+                            <span>{t('common.loading')}</span>
                         </>
                     ) : (
                         <>
                             <Check className="w-5 h-5" />
-                            <span>Validar e adicionar</span>
+                            <span>{t('common.confirm')}</span>
                         </>
                     )}
                 </button>

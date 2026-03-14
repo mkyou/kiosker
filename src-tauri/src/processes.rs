@@ -80,7 +80,22 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
         use winapi::um::wingdi::{GetBitmapBits, GetObjectW, BITMAP, DeleteObject};
         use winapi::um::winuser::{DestroyIcon, GetIconInfo};
 
-        let path_wide: Vec<u16> = OsStr::new(&path)
+        let mut final_path = path.clone();
+
+        // If it's a .lnk file, try to resolve the target to get the original icon
+        if path.to_lowercase().ends_with(".lnk") {
+            let resolve_cmd = format!("(New-Object -ComObject WScript.Shell).CreateShortcut('{}').TargetPath", path.replace("'", "''"));
+            if let Ok(output) = Command::new("powershell")
+                .args(&["-NoProfile", "-Command", &resolve_cmd])
+                .output() {
+                    let target = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !target.is_empty() && Path::new(&target).exists() {
+                        final_path = target;
+                    }
+                }
+        }
+
+        let path_wide: Vec<u16> = OsStr::new(&final_path)
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
@@ -235,9 +250,12 @@ pub fn start_gamepad_listener(_app_handle: AppHandle) {
             Err(_) => return, // If no gamepad support, gracefully degrade
         };
 
-        // State to detect L3 + R3 combo
+        // State to detect L3 + R3 combo 3x fast
         let mut l3_pressed = false;
         let mut r3_pressed = false;
+        let mut combo_count = 0;
+        let mut last_combo_time = std::time::Instant::now();
+        let combo_timeout = std::time::Duration::from_millis(1000);
 
         loop {
             while let Some(Event { event, .. }) = gilrs.next_event() {
@@ -250,9 +268,24 @@ pub fn start_gamepad_listener(_app_handle: AppHandle) {
                 }
 
                 if l3_pressed && r3_pressed {
-                    println!("L3 + R3 pressed! Killing Kiosk browsers...");
-                    let state = _app_handle.state::<AppState>();
-                    kill_kiosk_browsers(Some(&state));
+                    let now = std::time::Instant::now();
+                    if now.duration_since(last_combo_time) > combo_timeout {
+                        combo_count = 1;
+                    } else {
+                        combo_count += 1;
+                    }
+                    last_combo_time = now;
+
+                    if combo_count >= 3 {
+                        println!("L3 + R3 combo (3x) detected! Killing Kiosk browsers...");
+                        let state = _app_handle.state::<AppState>();
+                        kill_kiosk_browsers(Some(&state));
+                        combo_count = 0;
+                    }
+                    
+                    // Reset pressed state to force release and re-press for next combo step
+                    l3_pressed = false;
+                    r3_pressed = false;
                 }
             }
             std::thread::sleep(Duration::from_millis(50));
@@ -327,6 +360,28 @@ pub fn kill_kiosk_browsers(state: Option<&State<'_, AppState>>) {
         }
     }
 
+    #[cfg(target_os = "windows")]
+    {
+        use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, WM_CLOSE};
+        use std::process;
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if !hwnd.is_null() {
+                let mut fg_pid: u32 = 0;
+                GetWindowThreadProcessId(hwnd, &mut fg_pid);
+                let my_pid = process::id();
+                if fg_pid != 0 && fg_pid != my_pid {
+                    PostMessageW(hwnd, WM_CLOSE, 0, 0);
+                    
+                    // Fallback to force kill if WM_CLOSE isn't enough for the foreground process
+                    let fg_sys_pid = Pid::from(fg_pid as usize);
+                    if let Some(process) = system.process(fg_sys_pid) {
+                        let _ = process.kill();
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[tauri::command]
