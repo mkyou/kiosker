@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/kiosker-icon.png" alt="Kiosker Logo" width="128">
+  <img src="src-tauri/icons/icon.png" alt="Kiosker Logo" width="128">
   <h1>Kiosker</h1>
   <p><em>Um Hub de Entretenimento e Aplicações com Minimalismo Cinemático</em></p>
 
@@ -43,12 +43,10 @@ O Kiosker foi pensado para ser simples e operar com qualquer dispositivo de entr
 | Navegar | `↑ ↓ ← →` | Clique | Direcional / Analógico |
 | Abrir / Confirmar | `Enter` | Clique | `A` / `X` |
 | Menu de opções | `Shift+F10` | Botão direito | `Y` / `Triângulo` ou `Start` |
-| Sair do Kiosker | `Ctrl+Shift+Q` | 3× clique esquerdo | — |
+| Sair do Kiosker | `Ctrl+Shift+Q` | 3× clique esquerdo | `L3 + R3` (3×) |
 
 O Kiosker abre aplicativos em tela cheia e executa sites no modo `--kiosk` do navegador. Para voltar ao hub use qualquer um dos atalhos de saída acima.
 
 ## Roadmap
 
-- Refinar o ícone da aplicação (atualmente gerado com IA)
-- Lógica mais robusta para buscar imagens/ícones das aplicações nos cards
 - Registro de eventuais problemas no roadmap à medida que surgirem

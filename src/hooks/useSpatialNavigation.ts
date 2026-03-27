@@ -8,6 +8,9 @@ export function useSpatialNavigation() {
     const lastLeftClickTime = useRef<number>(0);
     const leftClickCount = useRef<number>(0);
     const lastClickTarget = useRef<EventTarget | null>(null);
+    const l3r3Count = useRef<number>(0);
+    const l3r3LastTime = useRef<number>(0);
+    const l3r3Pressed = useRef<boolean>(false);
 
     const isPointerBlocked = (el: HTMLElement): boolean => {
         let node: Element | null = el.parentElement;
@@ -307,6 +310,23 @@ export function useSpatialNavigation() {
                         lastActionTime.current = now;
                         break; // Stop processing other gamepads for this frame if one handled it
                     }
+                }
+
+                // L3+R3 triple press to exit (buttons[10] = L3, buttons[11] = R3)
+                const l3r3 = activePad.buttons[10]?.pressed && activePad.buttons[11]?.pressed;
+                if (l3r3 && !l3r3Pressed.current) {
+                    l3r3Pressed.current = true;
+                    if (now - l3r3LastTime.current > 1500) l3r3Count.current = 0;
+                    l3r3Count.current++;
+                    l3r3LastTime.current = now;
+                    if (l3r3Count.current >= 3) {
+                        l3r3Count.current = 0;
+                        import("@tauri-apps/api/core").then(({ invoke }) => {
+                            invoke("kill_all_kiosks").catch(console.error);
+                        });
+                    }
+                } else if (!l3r3) {
+                    l3r3Pressed.current = false;
                 }
             }
 

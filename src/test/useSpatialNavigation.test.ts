@@ -263,6 +263,81 @@ describe('useSpatialNavigation – Mouse Triple-Click', () => {
     });
 });
 
+// ─── Gamepad L3+R3 Triple Press ───────────────────────────────────────────────
+
+describe('useSpatialNavigation – Gamepad L3+R3 Triple Press', () => {
+    let mockGetGamepads: ReturnType<typeof vi.fn>;
+
+    const l3r3Pad = makePad({ buttons: Array(16).fill(false).map((_, i) => i === 10 || i === 11) });
+    const releasedPad = makePad();
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        mockGetGamepads = vi.fn();
+        Object.defineProperty(navigator, 'getGamepads', {
+            configurable: true,
+            value: mockGetGamepads,
+        });
+        vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.restoreAllMocks();
+    });
+
+    it('three L3+R3 presses within 1500ms invoke kill_all_kiosks', async () => {
+        renderHook(() => useSpatialNavigation());
+
+        // Press 1
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        // Release
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(400);
+
+        // Press 2 (~416ms elapsed)
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        // Release
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(400);
+
+        // Press 3 (~832ms elapsed, within 1500ms of press 1)
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+
+        vi.useRealTimers();
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        expect(mockInvoke).toHaveBeenCalledWith('kill_all_kiosks');
+    });
+
+    it('third L3+R3 press after >1500ms gap resets count and does NOT invoke kill_all_kiosks', () => {
+        renderHook(() => useSpatialNavigation());
+
+        // Press 1
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        // Release
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(400);
+
+        // Press 2 (~416ms elapsed)
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        // Release — then wait >1500ms before press 3
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(1600);
+
+        // Press 3 (>1500ms after press 2 → resets count to 1)
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+
+        expect(mockInvoke).not.toHaveBeenCalledWith('kill_all_kiosks');
+    });
+});
+
 // ─── Angular Tolerance (#9) ───────────────────────────────────────────────────
 
 describe('useSpatialNavigation – Angular Tolerance', () => {
