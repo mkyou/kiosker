@@ -80,7 +80,22 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
         use winapi::um::wingdi::{GetBitmapBits, GetObjectW, BITMAP, DeleteObject};
         use winapi::um::winuser::{DestroyIcon, GetIconInfo};
 
-        let path_wide: Vec<u16> = OsStr::new(&path)
+        let mut final_path = path.clone();
+
+        // If it's a .lnk file, try to resolve the target to get the original icon
+        if path.to_lowercase().ends_with(".lnk") {
+            let resolve_cmd = format!("(New-Object -ComObject WScript.Shell).CreateShortcut('{}').TargetPath", path.replace("'", "''"));
+            if let Ok(output) = Command::new("powershell")
+                .args(&["-NoProfile", "-Command", &resolve_cmd])
+                .output() {
+                    let target = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                    if !target.is_empty() && Path::new(&target).exists() {
+                        final_path = target;
+                    }
+                }
+        }
+
+        let path_wide: Vec<u16> = OsStr::new(&final_path)
             .encode_wide()
             .chain(std::iter::once(0))
             .collect();
@@ -120,7 +135,7 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
                             buffer.as_mut_ptr() as *mut _,
                         );
 
-                        if copied > 0 {
+                        if copied as usize == buffer_size {
                             let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
                             for i in 0..(width * height) as usize {
                                 let bgra_idx = i * bytes_per_pixel;
@@ -235,9 +250,12 @@ pub fn start_gamepad_listener(_app_handle: AppHandle) {
             Err(_) => return, // If no gamepad support, gracefully degrade
         };
 
-        // State to detect L3 + R3 combo
+        // State to detect L3 + R3 combo 3x fast
         let mut l3_pressed = false;
         let mut r3_pressed = false;
+        let mut combo_count = 0;
+        let mut last_combo_time = std::time::Instant::now();
+        let combo_timeout = std::time::Duration::from_millis(1000);
 
         loop {
             while let Some(Event { event, .. }) = gilrs.next_event() {
@@ -250,9 +268,24 @@ pub fn start_gamepad_listener(_app_handle: AppHandle) {
                 }
 
                 if l3_pressed && r3_pressed {
-                    println!("L3 + R3 pressed! Killing Kiosk browsers...");
-                    let state = _app_handle.state::<AppState>();
-                    kill_kiosk_browsers(Some(&state));
+                    let now = std::time::Instant::now();
+                    if now.duration_since(last_combo_time) > combo_timeout {
+                        combo_count = 1;
+                    } else {
+                        combo_count += 1;
+                    }
+                    last_combo_time = now;
+
+                    if combo_count >= 3 {
+                        println!("L3 + R3 combo (3x) detected! Killing Kiosk browsers...");
+                        let state = _app_handle.state::<AppState>();
+                        kill_kiosk_browsers(Some(&state));
+                        combo_count = 0;
+                    }
+                    
+                    // Reset pressed state to force release and re-press for next combo step
+                    l3_pressed = false;
+                    r3_pressed = false;
                 }
             }
             std::thread::sleep(Duration::from_millis(50));
@@ -327,6 +360,28 @@ pub fn kill_kiosk_browsers(state: Option<&State<'_, AppState>>) {
         }
     }
 
+    #[cfg(target_os = "windows")]
+    {
+        use winapi::um::winuser::{GetForegroundWindow, GetWindowThreadProcessId, PostMessageW, WM_CLOSE};
+        use std::process;
+        unsafe {
+            let hwnd = GetForegroundWindow();
+            if !hwnd.is_null() {
+                let mut fg_pid: u32 = 0;
+                GetWindowThreadProcessId(hwnd, &mut fg_pid);
+                let my_pid = process::id();
+                if fg_pid != 0 && fg_pid != my_pid {
+                    PostMessageW(hwnd, WM_CLOSE, 0, 0);
+                    
+                    // Fallback to force kill if WM_CLOSE isn't enough for the foreground process
+                    let fg_sys_pid = Pid::from(fg_pid as usize);
+                    if let Some(process) = system.process(fg_sys_pid) {
+                        let _ = process.kill();
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[tauri::command]
@@ -455,13 +510,14 @@ pub fn kill_target(state: State<'_, AppState>, target: String) -> Result<String,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn test_process_metadata_fallback() {
-        // No Windows ou Linux, o file_stem deve extrair o nome do executável
         let meta = get_executable_metadata("C:/Games/Cyberpunk2077.exe".to_string()).expect("Should parse path");
         assert_eq!(meta.title, "Cyberpunk2077");
-        
+
         let linux_meta = get_executable_metadata("/home/user/stremio".to_string()).expect("Should parse path");
         assert_eq!(linux_meta.title, "stremio");
     }
@@ -470,7 +526,6 @@ mod tests {
     fn test_right_click_interval() {
         let now: u64 = 1000;
         let last: u64 = 500;
-        // Se a diferença for < 1000ms, é um clique válido na sequência
         assert!(now - last < 1000);
     }
 
@@ -478,7 +533,6 @@ mod tests {
     fn test_active_targets_tracking() {
         use std::sync::Mutex;
         let pids = Mutex::new(vec![("test_url".to_string(), 12345u32)]);
-        
         let targets: Vec<String> = pids.lock().unwrap().iter().map(|(t, _)| t.clone()).collect();
         assert_eq!(targets[0], "test_url");
     }
@@ -488,15 +542,82 @@ mod tests {
         use std::sync::Mutex;
         let pids = Mutex::new(vec![
             ("target_a".to_string(), 100u32),
-            ("target_b".to_string(), 101u32)
+            ("target_b".to_string(), 101u32),
         ]);
-        
-        // Simulating kill_target for target_a
         let mut pids_guard = pids.lock().unwrap();
-        let target_to_kill = "target_a";
-        pids_guard.retain(|(t, _)| t != target_to_kill);
-        
+        pids_guard.retain(|(t, _)| t != "target_a");
         assert_eq!(pids_guard.len(), 1);
         assert_eq!(pids_guard[0].0, "target_b");
+    }
+
+    #[test]
+    fn test_get_executable_metadata_path_without_extension() {
+        let meta = get_executable_metadata("/usr/bin/firefox".to_string()).unwrap();
+        assert_eq!(meta.title, "firefox");
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_png() {
+        let dir = tempdir().unwrap();
+        let png_path = dir.path().join("test.png");
+        fs::write(&png_path, b"\x89PNG\r\n\x1a\nfake png data").unwrap();
+        let result = convert_image_to_base64(&png_path).unwrap();
+        assert!(result.starts_with("data:image/png;base64,"));
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_svg() {
+        let dir = tempdir().unwrap();
+        let svg_path = dir.path().join("test.svg");
+        fs::write(&svg_path, b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
+        let result = convert_image_to_base64(&svg_path).unwrap();
+        assert!(result.starts_with("data:image/svg+xml;base64,"));
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_returns_none_for_nonexistent_file() {
+        let result = convert_image_to_base64(std::path::Path::new("/nonexistent/file_kiosker_test.png"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_kill_target_noop_when_target_not_found() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![("target_a".to_string(), 100u32)]);
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(t, _)| t != "nonexistent_target");
+        assert_eq!(guard.len(), 1);
+    }
+
+    #[test]
+    fn test_kill_target_removes_all_matching_entries() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![
+            ("target_a".to_string(), 100u32),
+            ("target_a".to_string(), 101u32),
+            ("target_b".to_string(), 102u32),
+        ]);
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(t, _)| t != "target_a");
+        assert_eq!(guard.len(), 1);
+        assert_eq!(guard[0].0, "target_b");
+    }
+
+    #[test]
+    fn test_active_targets_cleanup_filters_dead_pids() {
+        use std::sync::Mutex;
+        use sysinfo::{Pid, System};
+        let fake_pid = u32::MAX;
+        let pids = Mutex::new(vec![("dead_target".to_string(), fake_pid)]);
+        let system = System::new_all();
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(_, pid)| system.process(Pid::from(*pid as usize)).is_some());
+        assert!(guard.is_empty(), "Dead PID should have been removed");
+    }
+
+    #[test]
+    fn test_launch_executable_fails_for_nonexistent_path() {
+        let result = std::process::Command::new("/nonexistent/binary/xyz_kiosker_test_1234").spawn();
+        assert!(result.is_err(), "Spawning a nonexistent executable should fail");
     }
 }

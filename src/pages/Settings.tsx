@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { isEnabled, enable, disable } from "@tauri-apps/plugin-autostart";
 import { invoke } from "@tauri-apps/api/core";
-import { Flame, Chrome, Loader2, Check, Download, Upload, Monitor, Command } from "lucide-react";
+import { Flame, Chrome, Loader2, Check, Download, Upload, Monitor, Command, Compass } from "lucide-react";
 import { useTranslation } from "../hooks/useTranslation";
 import { Language } from "../translations";
 
@@ -10,6 +10,14 @@ export function Settings() {
     const [autoStart, setAutoStart] = useState(false);
     const [preferredBrowser, setPreferredBrowser] = useState<string | null>(null);
     const [migrating, setMigrating] = useState(false);
+    const [toast, setToast] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
 
     useEffect(() => {
         isEnabled().then(setAutoStart).catch(console.error);
@@ -49,8 +57,9 @@ export function Settings() {
     const handleExport = async () => {
         try {
             const result = await invoke<string>("export_database");
-            alert(result);
+            setToast(result);
         } catch (e) {
+            setToast("Export failed");
             console.error("Export failed:", e);
         }
     };
@@ -58,8 +67,9 @@ export function Settings() {
     const handleImport = async () => {
         try {
             const result = await invoke<string>("import_database");
-            alert(result);
+            setToast(result);
         } catch (e) {
+            setToast("Import failed");
             console.error("Import failed:", e);
         }
     };
@@ -80,11 +90,11 @@ export function Settings() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mt-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mt-auto place-items-start">
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("firefox")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "firefox"
                                     ? "bg-dracula-purple/10 border-dracula-purple/50 text-dracula-purple neon-glow-purple"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -106,7 +116,7 @@ export function Settings() {
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("chrome")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "chrome"
                                     ? "bg-dracula-cyan/10 border-dracula-cyan/50 text-dracula-cyan shadow-[0_0_30px_rgba(139,233,253,0.3)]"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -128,7 +138,7 @@ export function Settings() {
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("edge")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "edge"
                                     ? "bg-dracula-green/10 border-dracula-green/50 text-dracula-green shadow-[0_0_30px_rgba(80,250,123,0.3)]"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -136,7 +146,7 @@ export function Settings() {
                         >
                             <div className="flex justify-between items-start w-full">
                                 <div className={`p-4 squircle-md ${preferredBrowser === "edge" ? "bg-dracula-green/20" : "bg-white/5"}`}>
-                                    <Monitor size={32} />
+                                    <Compass size={32} />
                                 </div>
                                 {preferredBrowser === "edge" && !migrating && <Check size={28} className="text-dracula-green" />}
                                 {preferredBrowser === "edge" && migrating && <Loader2 size={28} className="animate-spin text-dracula-green" />}
@@ -161,7 +171,7 @@ export function Settings() {
 
                             <button
                                 onClick={toggleAutoStart}
-                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full md:w-auto md:min-w-[280px] justify-between group shrink-0 ${
+                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full md:w-auto md:min-w-[280px] justify-between group shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                     autoStart ? 'bg-dracula-green/10 border-dracula-green/40 text-dracula-green neon-glow-green' : 'bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/10'
                                 }`}
                             >
@@ -178,10 +188,10 @@ export function Settings() {
                         <h3 className="text-3xl font-display font-black mb-3">{t('settings.data.title')}</h3>
                         <p className="text-dracula-fg/40 text-base mb-12 font-sans">{t('settings.data.desc')}</p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 place-items-start">
                             <button 
                                 onClick={handleExport}
-                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-cyan/10 text-dracula-cyan rounded-xl group-hover:scale-110 transition-transform"><Download size={20}/></div>
@@ -191,7 +201,7 @@ export function Settings() {
                             </button>
                             <button 
                                 onClick={handleImport}
-                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-purple/10 text-dracula-purple rounded-xl group-hover:scale-110 transition-transform"><Upload size={20}/></div>
@@ -243,16 +253,19 @@ export function Settings() {
                                     </td>
                                     <td className="px-10 py-10">
                                         <div className="flex gap-2 items-center">
-                                            <span className="bg-dracula-pink/10 px-4 py-2 squircle-sm border border-dracula-pink/20 text-[10px] font-black uppercase tracking-widest text-dracula-pink">BOTÃO ESQUERDO</span>
+                                            <span className="bg-dracula-pink/10 px-4 py-2 squircle-sm border border-dracula-pink/20 text-[10px] font-black uppercase tracking-widest text-dracula-pink">{t('settings.commands.left_click')}</span>
                                             <span className="text-dracula-fg/20 font-black text-xs">→</span>
-                                            <span className="bg-dracula-pink/20 px-3 py-1.5 squircle-sm border border-dracula-pink/30 text-[9px] font-black uppercase text-dracula-pink">(3X)</span>
+                                            <span className="bg-dracula-pink/20 px-3 py-1.5 squircle-sm border border-dracula-pink/30 text-[9px] font-black uppercase text-dracula-pink">{t('settings.commands.triple_press')}</span>
                                         </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <div className="flex gap-3 items-center">
-                                            <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl">L3</kbd>
-                                            <span className="text-dracula-purple font-black">+</span>
-                                            <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl">R3</kbd>
+                                        <div className="flex flex-col gap-2">
+                                            <div className="flex gap-3 items-center">
+                                                <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl">L3</kbd>
+                                                <span className="text-dracula-purple font-black">+</span>
+                                                <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl">R3</kbd>
+                                            </div>
+                                            <span className="text-[9px] font-black text-dracula-pink/60 uppercase tracking-widest">{t('settings.commands.triple_press')}</span>
                                         </div>
                                     </td>
                                 </tr>
@@ -271,10 +284,14 @@ export function Settings() {
                                         </div>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-dracula-cyan bg-dracula-cyan/10 px-5 py-3 squircle-sm border border-dracula-cyan/20">BOTÃO DIREITO</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-dracula-cyan bg-dracula-cyan/10 px-5 py-3 squircle-sm border border-dracula-cyan/20">{t('settings.commands.right_click')}</span>
                                     </td>
                                     <td className="px-10 py-10">
-                                        <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl tracking-widest uppercase">X / Square</kbd>
+                                        <div className="flex gap-2 items-center">
+                                            <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl tracking-widest uppercase">Y / Triangle</kbd>
+                                            <span className="text-xs text-dracula-fg/20">or</span>
+                                            <kbd className="bg-dracula-surface px-4 py-2 squircle-md border border-white/10 text-xs font-mono text-dracula-fg shadow-xl tracking-widest uppercase">Start</kbd>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>
@@ -293,12 +310,12 @@ export function Settings() {
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 flex-shrink-0">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 flex-shrink-0 place-items-start">
                             {(['pt', 'en', 'es', 'zh'] as Language[]).map((lang) => (
                                 <button
                                     key={lang}
                                     onClick={() => setLanguage(lang)}
-                                    className={`flex flex-col items-center justify-center min-w-[140px] p-6 squircle-lg border transition-all duration-500 scale-100 active:scale-95 ${
+                                    className={`flex flex-col items-center justify-center min-w-[140px] p-6 squircle-lg border transition-all duration-500 scale-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                         currentLang === lang
                                             ? "bg-dracula-purple/20 border-dracula-purple/50 text-dracula-purple font-black shadow-2xl neon-glow-purple"
                                             : "bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/20 hover:text-dracula-fg hover:bg-white/10"
@@ -311,6 +328,17 @@ export function Settings() {
                     </div>
                 </div>
             </div>
+        {/* Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] animate-fade-in-up">
+                    <div className="bg-dracula-surface/90 backdrop-blur-xl border border-dracula-purple/30 px-10 py-5 squircle-md shadow-2xl flex items-center gap-4">
+                        <div className="w-2 h-2 rounded-full bg-dracula-purple animate-pulse shrink-0" />
+                        <span className="text-white font-black uppercase tracking-[0.2em] text-[10px] whitespace-nowrap">
+                            {toast}
+                        </span>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

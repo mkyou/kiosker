@@ -6,6 +6,7 @@ import { AddEntryForm } from "../components/AddEntryForm";
 import { Plus, Gamepad2, Globe } from "lucide-react";
 import { SystemAppPicker } from "../components/SystemAppPicker";
 import { useTranslation } from "../hooks/useTranslation";
+import { motion, AnimatePresence } from "framer-motion";
 
 export interface KioskerItem {
     id: number;
@@ -29,6 +30,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
     const [showAddWeb, setShowAddWeb] = useState(false);
     const [showSystemAppPicker, setShowSystemAppPicker] = useState(false);
     const [activeTargets, setActiveTargets] = useState<string[]>([]);
+    const [itemToDelete, setItemToDelete] = useState<KioskerItem | null>(null);
 
     const refreshActiveTargets = async () => {
         try {
@@ -83,6 +85,17 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
         }
     };
 
+    const confirmDelete = async () => {
+        if (!itemToDelete) return;
+        try {
+            await invoke("delete_item", { id: itemToDelete.id });
+            setItemToDelete(null);
+            onRefresh();
+        } catch (e) {
+            console.error("Delete failed:", e);
+        }
+    };
+
     const handlePickExecutable = async () => {
         try {
             setShowSystemAppPicker(false);
@@ -121,16 +134,16 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                     <div className="w-24 h-24 mb-6 squircle-lg apple-glass flex items-center justify-center">
                         <Plus className="w-10 h-10 text-dracula-purple/40" />
                     </div>
-                    <h2 className="text-2xl font-display font-black text-dracula-fg/40 mb-2">Biblioteca vazia</h2>
+                    <h2 className="text-2xl font-display font-black text-dracula-fg/40 mb-2">{t('home.empty_title')}</h2>
                     <p className="font-sans text-lg max-w-sm text-center text-dracula-fg/40 leading-relaxed italic mb-10">
-                        Adicione serviços à sua interface utilizando os cartões de ação logo abaixo.
+                        {t('home.empty_desc')}
                     </p>
                     <div className="flex gap-4">
                         <button onClick={() => setShowAddWeb(true)} className="px-6 py-4 apple-glass squircle-md flex items-center gap-3 hover:bg-white/10 transition-colors group focus-ring">
-                            <Globe className="text-dracula-cyan group-hover:scale-110 transition-transform"/> <span className="font-bold text-sm uppercase tracking-widest text-dracula-fg/70">Adicionar Site</span>
+                            <Globe className="text-dracula-cyan group-hover:scale-110 transition-transform"/> <span className="font-bold text-sm uppercase tracking-widest text-dracula-fg/70">{t('home.add_site')}</span>
                         </button>
                         <button onClick={() => setShowSystemAppPicker(true)} className="px-6 py-4 apple-glass squircle-md flex items-center gap-3 hover:bg-white/10 transition-colors group focus-ring">
-                            <Gamepad2 className="text-dracula-pink group-hover:scale-110 transition-transform"/> <span className="font-bold text-sm uppercase tracking-widest text-dracula-fg/70">Adicionar App</span>
+                            <Gamepad2 className="text-dracula-pink group-hover:scale-110 transition-transform"/> <span className="font-bold text-sm uppercase tracking-widest text-dracula-fg/70">{t('home.add_app')}</span>
                         </button>
                     </div>
                 </div>
@@ -142,7 +155,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                         <section>
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-yellow/80 mb-6 flex items-center gap-3">
                                 <span className="text-xl">⭐</span>
-                                Favoritos
+                                {t('home.favorites')}
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-4 gap-10 place-items-start">
                                 {favoriteItems.map((item) => (
@@ -157,6 +170,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
                                         onRefresh={onRefresh}
+                                        onDeleteRequest={() => setItemToDelete(item)}
                                     />
                                 ))}
                             </div>
@@ -169,7 +183,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
                                 <span className="opacity-50 text-xl">#</span> {t('home.web')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10 place-items-start">
                                 {webItems.map((item) => (
                                     <MediaCard
                                         key={`web-${item.id}`}
@@ -182,6 +196,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
                                         onRefresh={onRefresh}
+                                        onDeleteRequest={() => setItemToDelete(item)}
                                     />
                                 ))}
                                 {/* Action Card para adicionar mais websites */}
@@ -192,7 +207,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                     <div className="w-12 h-12 rounded-full border border-dashed border-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform group-hover:border-dracula-cyan group-hover:text-dracula-cyan">
                                         <Plus size={24} />
                                     </div>
-                                    <span className="font-black text-xs uppercase tracking-widest text-center">Adicionar Site</span>
+                                    <span className="font-black text-xs uppercase tracking-widest text-center">{t('home.add_site')}</span>
                                 </button>
                             </div>
                         </section>
@@ -204,7 +219,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
                                 <span className="opacity-50 text-xl">#</span> {t('home.apps')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10 place-items-start">
                                 {appItems.map((item) => (
                                     <MediaCard
                                         key={`app-${item.id}`}
@@ -217,6 +232,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                         isRunning={activeTargets.includes(item.target_path)}
                                         onKill={() => handleKill(item.target_path)}
                                         onRefresh={onRefresh}
+                                        onDeleteRequest={() => setItemToDelete(item)}
                                     />
                                 ))}
                                 {/* Action Card para adicionar mais aplicativos */}
@@ -227,7 +243,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                                     <div className="w-12 h-12 rounded-full border border-dashed border-white/20 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform group-hover:border-dracula-pink group-hover:text-dracula-pink">
                                         <Plus size={24} />
                                     </div>
-                                    <span className="font-black text-xs uppercase tracking-widest text-center">App Local</span>
+                                    <span className="font-black text-xs uppercase tracking-widest text-center">{t('home.apps_local')}</span>
                                 </button>
                             </div>
                         </section>
@@ -238,12 +254,12 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                         <section className="pt-8 border-t border-white/5 flex gap-4">
                            {webItems.length === 0 && (
                                 <button onClick={() => setShowAddWeb(true)} className="px-5 py-3 bg-white/5 squircle-md text-xs font-bold uppercase tracking-widest text-dracula-fg/40 hover:text-dracula-fg hover:bg-dracula-cyan/20 transition-all focus-ring">
-                                    + Adicionar Website
+                                    + {t('home.add_site')}
                                 </button>
                            )}
                            {appItems.length === 0 && (
                                 <button onClick={() => setShowSystemAppPicker(true)} className="px-5 py-3 bg-white/5 squircle-md text-xs font-bold uppercase tracking-widest text-dracula-fg/40 hover:text-dracula-fg hover:bg-dracula-pink/20 transition-all focus-ring">
-                                    + Procurar Aplicativos
+                                    + {t('home.add_app')}
                                 </button>
                            )}
                         </section>
@@ -254,7 +270,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
 
             {/* Modals */}
             {showAddWeb && (
-                <AddEntryForm onComplete={() => { setShowAddWeb(false); onRefresh(); }} />
+                <AddEntryForm onClose={() => setShowAddWeb(false)} onRefresh={onRefresh} />
             )}
 
             {showSystemAppPicker && (
@@ -264,6 +280,75 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                     onManualPick={handlePickExecutable}
                 />
             )}
+
+            {/* Confirm Delete Modal - Centralized for Stacking Context Safety */}
+            <AnimatePresence>
+                {itemToDelete && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[10000] flex items-center justify-center bg-dracula-bg/90 backdrop-blur-md p-4"
+                    >
+                        <motion.div 
+                            initial={{ scale: 0.9, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            className="bg-dracula-surface p-10 squircle-lg border border-dracula-red/30 shadow-2xl max-w-md w-full text-center"
+                        >
+                            <div className="w-20 h-20 bg-dracula-red/10 text-dracula-red rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(255,85,85,0.2)]">
+                                <span className="text-4xl">🗑</span>
+                            </div>
+                            <h3 className="text-2xl font-display font-black text-white mb-3 uppercase tracking-tight leading-tight">
+                                {t('common.confirm_delete')}
+                            </h3>
+                            <p className="text-dracula-fg/40 text-lg mb-10 font-sans italic">
+                                "{itemToDelete.title}"
+                            </p>
+                            <div className="flex gap-6">
+                                <button 
+                                    autoFocus
+                                    onClick={() => setItemToDelete(null)}
+                                    className="flex-1 py-5 px-6 rounded-2xl bg-white/5 text-dracula-fg font-bold uppercase tracking-widest text-xs hover:bg-white/10 transition-all border border-white/5 focus-ring"
+                                >
+                                    {t('common.cancel')}
+                                </button>
+                                <button 
+                                    onClick={confirmDelete}
+                                    className="flex-1 py-5 px-6 rounded-2xl bg-dracula-red text-white font-black uppercase tracking-widest text-xs hover:bg-dracula-red/80 transition-all border border-dracula-red/50 shadow-[0_5px_40px_rgba(255,85,85,0.4)] focus-ring"
+                                >
+                                    {t('common.confirm')}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Loading Indicator */}
+            <AnimatePresence>
+                {loading && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[5000] flex items-center justify-center bg-dracula-bg/40 backdrop-blur-sm pointer-events-none"
+                    >
+                        <div className="flex flex-col items-center gap-6">
+                            <div className="relative">
+                                <motion.div 
+                                    className="w-20 h-20 rounded-full border-2 border-dracula-purple/20 border-t-dracula-purple shadow-[0_0_20px_rgba(189,147,249,0.1)]"
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-2 h-2 rounded-full bg-dracula-purple animate-pulse" />
+                                </div>
+                            </div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-dracula-purple animate-pulse">{t('common.loading')}</span>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

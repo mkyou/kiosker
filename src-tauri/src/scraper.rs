@@ -19,6 +19,33 @@ pub fn sanitize_web_url(url: String) -> String {
     clean_url
 }
 
+fn is_valid_url(url: &str) -> bool {
+    if url.is_empty() {
+        return false;
+    }
+
+    if url.len() > 2000 {
+        return false; // Evitar URLs excessivamente longas
+    }
+
+    // Verificar caracteres suspeitos
+    if url.contains("<") || url.contains(">") || url.contains(";") {
+        return false;
+    }
+
+    // Verificar se é um protocolo permitido
+    if !url.starts_with("http://") && !url.starts_with("https://") {
+        return false;
+    }
+
+    // Verificar se há caracteres de controle
+    if url.chars().any(|c| c.is_control()) {
+        return false;
+    }
+
+    true
+}
+
 fn extrapolate_title_from_url(url: &str) -> String {
     let clean_url = url
         .replace("https://", "")
@@ -35,9 +62,20 @@ fn extrapolate_title_from_url(url: &str) -> String {
 
 #[tauri::command]
 pub fn fetch_and_parse_links(url: String) -> Result<Vec<ScrapedLink>, String> {
+    // Validar URL antes de processar
+    if !is_valid_url(&url) {
+        return Err("URL inválida ou malformada".to_string());
+    }
+
+    // Limitar tamanho da URL
+    if url.len() > 2000 {
+        return Err("URL muito longa".to_string());
+    }
+
     let client = Client::builder()
         // Masquerade as a real browser to bypass basic anti-bot systems
         .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+        .timeout(std::time::Duration::from_secs(10))
         .build()
         .map_err(|e| format!("Failed to build HTTP client: {}", e))?;
 
@@ -53,7 +91,8 @@ pub fn fetch_and_parse_links(url: String) -> Result<Vec<ScrapedLink>, String> {
     let html_content = res.text().map_err(|e| e.to_string())?;
     let document = Html::parse_document(&html_content);
 
-    let link_selector = Selector::parse("a[href]").unwrap();
+    let link_selector = Selector::parse("a[href]")
+        .map_err(|e| format!("Invalid CSS selector: {e}"))?;
 
     let mut results = Vec::new();
 
@@ -155,7 +194,8 @@ pub fn fetch_site_metadata(url: String) -> Result<SiteMetadata, String> {
     let html_content = res.text().unwrap_or_default();
     let document = Html::parse_document(&html_content);
 
-    let title_selector = Selector::parse("title").unwrap();
+    let title_selector = Selector::parse("title")
+        .map_err(|e| format!("Invalid CSS selector: {e}"))?;
     let mut scraped_title = document
         .select(&title_selector)
         .next()
@@ -189,7 +229,8 @@ pub fn fetch_site_metadata(url: String) -> Result<SiteMetadata, String> {
     let mut icon_url = None;
     let mut description = None;
 
-    let meta_selector = Selector::parse("meta").unwrap();
+    let meta_selector = Selector::parse("meta")
+        .map_err(|e| format!("Invalid CSS selector: {e}"))?;
     for element in document.select(&meta_selector) {
         let prop = element
             .value()
@@ -207,7 +248,8 @@ pub fn fetch_site_metadata(url: String) -> Result<SiteMetadata, String> {
     }
 
     if icon_url.is_none() {
-        let link_selector = Selector::parse("link[rel='icon'], link[rel='shortcut icon']").unwrap();
+        let link_selector = Selector::parse("link[rel='icon'], link[rel='shortcut icon']")
+            .map_err(|e| format!("Invalid CSS selector: {e}"))?;
         if let Some(el) = document.select(&link_selector).next() {
             if let Some(href) = el.value().attr("href") {
                 let mut resolved_url = href.to_string();
@@ -284,7 +326,10 @@ fn search_fallback_image(query: &str, client: &Client) -> Option<String> {
     if let Ok(res) = client.get(&search_url).send() {
         if let Ok(html_content) = res.text() {
             let document = Html::parse_document(&html_content);
-            let img_selector = Selector::parse("img").unwrap();
+            let img_selector = match Selector::parse("img") {
+                Ok(s) => s,
+                Err(_) => return None,
+            };
 
             for element in document.select(&img_selector) {
                 if let Some(src) = element.value().attr("src") {
@@ -305,20 +350,5 @@ fn search_fallback_image(query: &str, client: &Client) -> Option<String> {
     None
 }
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_sanitize_web_url() {
-        assert_eq!(sanitize_web_url("google.com".to_string()), "https://google.com");
-        assert_eq!(sanitize_web_url("http://example.com".to_string()), "http://example.com");
-        assert_eq!(sanitize_web_url("  https://test.com  ".to_string()), "https://test.com");
-    }
-
-    #[test]
-    fn test_extrapolate_title_from_url() {
-        assert_eq!(extrapolate_title_from_url("https://www.netflix.com"), "Netflix");
-        assert_eq!(extrapolate_title_from_url("http://youtube.com/watch"), "Youtube");
-        assert_eq!(extrapolate_title_from_url("google.pt"), "Google");
-    }
-}
+#[path = "scraper.test.rs"]
+mod tests;

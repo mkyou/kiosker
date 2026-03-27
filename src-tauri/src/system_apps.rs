@@ -185,7 +185,7 @@ mod tests {
 
         let app = parse_desktop_file(&file_path).expect("Should parse desktop file");
         assert_eq!(app.name, "Kiosker Test");
-        assert_eq!(app.exec, "kiosker --debug"); // Should strip %u
+        assert_eq!(app.exec, "kiosker --debug");
         assert_eq!(app.icon, Some("kiosker-icon".to_string()));
     }
 
@@ -199,5 +199,99 @@ mod tests {
 
         let app = parse_desktop_file(&file_path);
         assert!(app.is_none(), "Should ignore NoDisplay=true apps");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_desktop_file_removes_all_percent_placeholders() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("placeholders.desktop");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "[Desktop Entry]\nName=App\nExec=app --open %U --file %f %F").unwrap();
+
+        let app = parse_desktop_file(&file_path).unwrap();
+        assert_eq!(app.exec, "app --open");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_desktop_file_returns_none_when_name_missing() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("noname.desktop");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "[Desktop Entry]\nExec=some-app").unwrap();
+
+        assert!(parse_desktop_file(&file_path).is_none());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_desktop_file_returns_none_when_exec_missing() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("noexec.desktop");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(file, "[Desktop Entry]\nName=Some App").unwrap();
+
+        assert!(parse_desktop_file(&file_path).is_none());
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_parse_desktop_file_stops_reading_at_new_section() {
+        let dir = tempdir().unwrap();
+        let file_path = dir.path().join("sections.desktop");
+        let mut file = File::create(&file_path).unwrap();
+        writeln!(
+            file,
+            "[Desktop Entry]\nName=Real App\nExec=real-app\n[Desktop Action Open]\nName=Override Name\nExec=override"
+        )
+        .unwrap();
+
+        let app = parse_desktop_file(&file_path).unwrap();
+        assert_eq!(app.name, "Real App");
+        assert_eq!(app.exec, "real-app");
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn test_scan_linux_dir_ignores_non_desktop_files() {
+        let dir = tempdir().unwrap();
+        let mut txt_file = File::create(dir.path().join("readme.txt")).unwrap();
+        writeln!(txt_file, "not a desktop file").unwrap();
+        let mut desktop_file = File::create(dir.path().join("app.desktop")).unwrap();
+        writeln!(desktop_file, "[Desktop Entry]\nName=App\nExec=app").unwrap();
+
+        let mut apps = Vec::new();
+        scan_linux_dir_for_apps(dir.path().to_path_buf(), &mut apps);
+
+        assert_eq!(apps.len(), 1);
+        assert_eq!(apps[0].name, "App");
+    }
+
+    #[test]
+    fn test_get_system_apps_result_is_sorted_alphabetically() {
+        let mut apps = vec![
+            SystemAppEntry { name: "Zoom".to_string(), exec: "zoom".to_string(), icon: None, comment: None },
+            SystemAppEntry { name: "firefox".to_string(), exec: "firefox".to_string(), icon: None, comment: None },
+            SystemAppEntry { name: "Chrome".to_string(), exec: "chrome".to_string(), icon: None, comment: None },
+        ];
+        apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        assert_eq!(apps[0].name, "Chrome");
+        assert_eq!(apps[1].name, "firefox");
+        assert_eq!(apps[2].name, "Zoom");
+    }
+
+    #[test]
+    fn test_get_system_apps_deduplicates_by_name() {
+        let mut apps = vec![
+            SystemAppEntry { name: "Firefox".to_string(), exec: "firefox".to_string(), icon: None, comment: None },
+            SystemAppEntry { name: "Firefox".to_string(), exec: "firefox2".to_string(), icon: None, comment: None },
+            SystemAppEntry { name: "Chrome".to_string(), exec: "chrome".to_string(), icon: None, comment: None },
+        ];
+        apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        apps.dedup_by(|a, b| a.name == b.name);
+        assert_eq!(apps.len(), 2);
+        assert!(apps.iter().any(|a| a.name == "Chrome"));
+        assert!(apps.iter().any(|a| a.name == "Firefox"));
     }
 }

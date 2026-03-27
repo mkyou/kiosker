@@ -39,11 +39,11 @@ export function BrowserPicker({ onComplete }: BrowserPickerProps) {
 
                 <header className="mb-14 text-center relative z-10">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dracula-purple/10 border border-dracula-purple/20 text-dracula-purple text-[10px] font-black uppercase tracking-[0.3em] mb-6">
-                        Welcome to Kiosker
+                        {t('settings.setup.welcome')}
                     </div>
-                    <h1 className="text-5xl font-display font-black text-dracula-fg mb-4 tracking-tighter">Prepare sua experiência</h1>
+                    <h1 className="text-5xl font-display font-black text-dracula-fg mb-4 tracking-tighter">{t('settings.setup.title')}</h1>
                     <p className="text-dracula-fg/40 text-xl max-w-lg mx-auto font-sans leading-relaxed">
-                        Escolha seu navegador principal para que possamos importar seus logins e configurações de streaming.
+                        {t('settings.setup.desc')}
                     </p>
                 </header>
 
@@ -61,11 +61,11 @@ export function BrowserPicker({ onComplete }: BrowserPickerProps) {
                             <Flame className={`w-14 h-14 ${selected === "firefox" ? "text-dracula-purple" : "text-dracula-fg/20"}`} />
                         </div>
                         <h3 className="text-2xl font-black text-dracula-fg mb-3 tracking-tight">Firefox</h3>
-                        <p className="text-sm text-center text-dracula-fg/30 mb-6 font-sans leading-relaxed">
+                        <p className="text-sm text-center text-dracula-fg/30 mb-6 font-sans leading-relaxed break-words w-full">
                             {t('settings.browser.firefox_desc')}
                         </p>
                         <div className="mt-auto px-5 py-2 rounded-full bg-dracula-purple/10 text-dracula-purple text-[10px] font-black uppercase tracking-widest border border-dracula-purple/20">
-                            Recomendado
+                            {t('settings.setup.recommended')}
                         </div>
                     </button>
 
@@ -82,7 +82,7 @@ export function BrowserPicker({ onComplete }: BrowserPickerProps) {
                             <Chrome className={`w-14 h-14 ${selected === "chrome" ? "text-dracula-cyan" : "text-dracula-fg/20"}`} />
                         </div>
                         <h3 className="text-2xl font-black text-dracula-fg mb-3 tracking-tight">Chromium</h3>
-                        <p className="text-sm text-center text-dracula-fg/30 mb-6 font-sans leading-relaxed">
+                        <p className="text-sm text-center text-dracula-fg/30 mb-6 font-sans leading-relaxed break-words w-full">
                             {t('settings.browser.chrome_desc')}
                         </p>
                     </button>
@@ -107,7 +107,7 @@ export function BrowserPicker({ onComplete }: BrowserPickerProps) {
                 <footer className="mt-16 pt-10 border-t border-white/5 w-full text-center">
                     <p className="text-dracula-fg/20 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3">
                         <CheckCircle2 size={16} className="text-dracula-green/50" /> 
-                        Your data stays local and secure
+                        {t('settings.setup.privacy')}
                     </p>
                 </footer>
             </div>

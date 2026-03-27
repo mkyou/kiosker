@@ -51,8 +51,8 @@ export function SystemAppPicker({ onSelect, onClose, onManualPick }: SystemAppPi
                                 <Cpu className="w-6 h-6" />
                             </div>
                             <div>
-                                <h2 className="text-3xl font-display font-black text-dracula-fg tracking-tighter">{t('home.apps')}</h2>
-                                <p className="text-dracula-fg/30 text-sm font-sans">{t('settings.startup.desc')}</p>
+                                    <h2 className="text-3xl font-display font-black text-dracula-fg tracking-tighter">{t('home.apps')}</h2>
+                                    <p className="text-dracula-fg/30 text-sm font-sans">{t('home.apps_desc')}</p>
                             </div>
                         </div>
                         <button 
@@ -68,7 +68,7 @@ export function SystemAppPicker({ onSelect, onClose, onManualPick }: SystemAppPi
                         <input
                             autoFocus
                             type="text"
-                            placeholder="Buscar aplicativo (ex: Discord, VLC, Firefox...)"
+                            placeholder={t('home.search_placeholder')}
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             className="w-full bg-dracula-bg/40 border-2 border-white/5 focus:border-dracula-purple/30 squircle-md py-5 pl-16 pr-6 text-dracula-fg text-xl placeholder-dracula-fg/10 focus:outline-none transition-all font-sans"
@@ -80,7 +80,7 @@ export function SystemAppPicker({ onSelect, onClose, onManualPick }: SystemAppPi
                     {loading ? (
                         <div className="flex flex-col items-center justify-center h-96 text-dracula-fg/20 gap-6">
                             <Loader2 className="animate-spin text-dracula-purple" size={48} />
-                            <p className="font-black uppercase tracking-[0.3em] text-xs">Escaneando aplicativos instalados...</p>
+                            <p className="font-black uppercase tracking-[0.3em] text-xs">{t('common.loading')}</p>
                         </div>
                     ) : filteredApps.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-96 text-dracula-fg/10">
@@ -116,7 +116,7 @@ export function SystemAppPicker({ onSelect, onClose, onManualPick }: SystemAppPi
                             className="flex items-center gap-3 px-8 py-4 bg-dracula-purple/10 hover:bg-dracula-purple/20 border border-dracula-purple/30 rounded-full text-dracula-purple text-sm font-black uppercase tracking-widest transition-all active:scale-95 shadow-lg group"
                         >
                             <FileSearch size={18} className="group-hover:scale-110 transition-transform" />
-                            Navegar manualmente e escolher arquivo (.exe)
+                            {t('common.open')} (.exe)
                         </button>
                     )}
                     <p className="text-[10px] text-dracula-fg/10 font-black uppercase tracking-[0.4em] leading-relaxed text-center">

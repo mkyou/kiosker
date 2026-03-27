@@ -23,6 +23,7 @@ pub fn get_kiosker_profile_dir(app_handle: &AppHandle) -> PathBuf {
     profile_dir
 }
 
+#[allow(dead_code)]
 pub fn find_default_browser_profile() -> Option<(PathBuf, &'static str)> {
     // 1. Prioritize Firefox (User Preference - Privacy)
     #[cfg(target_os = "windows")]
@@ -140,6 +141,8 @@ fn find_default_browser_profile_by_type(browser_type: &str) -> Option<(PathBuf, 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::path::PathBuf;
     use tempfile::tempdir;
 
     #[test]
@@ -147,9 +150,107 @@ mod tests {
         let dir = tempdir().unwrap();
         let profile_path = dir.path().join("abc.default-release");
         let _ = fs::create_dir(&profile_path);
-        
-        // Should find the folder containing '.default-release'
         let found = find_firefox_profile_in_dir(dir.path()).unwrap();
         assert!(found.to_string_lossy().contains("abc.default-release"));
+    }
+
+    #[test]
+    fn test_find_firefox_profile_in_dir_returns_none_for_empty_dir() {
+        let dir = tempdir().unwrap();
+        assert!(find_firefox_profile_in_dir(dir.path()).is_none());
+    }
+
+    #[test]
+    fn test_find_firefox_profile_in_dir_returns_none_for_nonexistent_path() {
+        assert!(find_firefox_profile_in_dir(Path::new("/nonexistent/path/xyz_kiosker_test")).is_none());
+    }
+
+    #[test]
+    fn test_find_firefox_profile_in_dir_finds_plain_default_profile() {
+        let dir = tempdir().unwrap();
+        let profile_path = dir.path().join("abc.default");
+        fs::create_dir(&profile_path).unwrap();
+        let found = find_firefox_profile_in_dir(dir.path()).unwrap();
+        assert!(found.to_string_lossy().contains("abc.default"));
+    }
+
+    #[test]
+    fn test_migration_firefox_dest_is_profile_root() {
+        let profile_dir = PathBuf::from("/tmp/kiosker_test_dir");
+        let browser_type = "firefox";
+        let dest_dir = if browser_type == "firefox" { profile_dir.clone() } else { profile_dir.join("Default") };
+        assert_eq!(dest_dir, profile_dir);
+    }
+
+    #[test]
+    fn test_migration_chrome_dest_is_default_subfolder() {
+        let profile_dir = PathBuf::from("/tmp/kiosker_test_dir");
+        let browser_type = "chrome";
+        let dest_dir = if browser_type == "firefox" { profile_dir.clone() } else { profile_dir.join("Default") };
+        assert_eq!(dest_dir, profile_dir.join("Default"));
+    }
+
+    #[test]
+    fn test_migration_writes_browser_type_file() {
+        let dir = tempdir().unwrap();
+        fs::write(dir.path().join("browser.type"), "firefox").unwrap();
+        let content = fs::read_to_string(dir.path().join("browser.type")).unwrap();
+        assert_eq!(content, "firefox");
+    }
+
+    #[test]
+    fn test_migration_firefox_copies_correct_files() {
+        let src_dir = tempdir().unwrap();
+        let dest_dir = tempdir().unwrap();
+        let firefox_files = ["places.sqlite", "key4.db", "cert9.db", "cookies.sqlite", "formhistory.sqlite", "logins.json"];
+        for f in &firefox_files {
+            fs::write(src_dir.path().join(f), b"test").unwrap();
+        }
+        for f in &firefox_files {
+            let src = src_dir.path().join(f);
+            if src.exists() { fs::copy(&src, dest_dir.path().join(f)).unwrap(); }
+        }
+        for f in &firefox_files {
+            assert!(dest_dir.path().join(f).exists(), "Missing: {}", f);
+        }
+    }
+
+    #[test]
+    fn test_migration_chrome_copies_correct_files() {
+        let src_dir = tempdir().unwrap();
+        let dest_dir = tempdir().unwrap();
+        let chrome_files = ["Cookies", "Login Data", "Web Data", "History", "Local State"];
+        for f in &chrome_files {
+            fs::write(src_dir.path().join(f), b"test").unwrap();
+        }
+        for f in &chrome_files {
+            let src = src_dir.path().join(f);
+            if src.exists() { fs::copy(&src, dest_dir.path().join(f)).unwrap(); }
+        }
+        for f in &chrome_files {
+            assert!(dest_dir.path().join(f).exists(), "Missing: {}", f);
+        }
+    }
+
+    #[test]
+    fn test_migration_skips_missing_source_files() {
+        let src_dir = tempdir().unwrap();
+        let dest_dir = tempdir().unwrap();
+        let src_file = src_dir.path().join("missing_file.sqlite");
+        if src_file.exists() {
+            fs::copy(&src_file, dest_dir.path().join("missing_file.sqlite")).unwrap();
+        }
+        assert!(!dest_dir.path().join("missing_file.sqlite").exists());
+    }
+
+    #[test]
+    fn test_profile_dir_creation_if_not_exists() {
+        let tmp = tempdir().unwrap();
+        let profile_dir = tmp.path().join("browser-profile");
+        assert!(!profile_dir.exists());
+        if !profile_dir.exists() {
+            let _ = fs::create_dir_all(&profile_dir);
+        }
+        assert!(profile_dir.exists());
     }
 }

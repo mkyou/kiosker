@@ -5,7 +5,7 @@ import { translations, Language } from '../translations';
 interface TranslationContextType {
     language: Language;
     setLanguage: (lang: Language) => Promise<void>;
-    t: (path: string) => any;
+    t: (path: string) => string;
 }
 
 const TranslationContext = createContext<TranslationContextType | undefined>(undefined);
@@ -36,17 +36,17 @@ export const TranslationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         }
     };
 
-    const t = (path: string) => {
+    const t = (path: string): string => {
         const keys = path.split('.');
         let current: any = translations[language];
         for (const key of keys) {
-            if (current && current[key]) {
+            if (current && typeof current === 'object' && key in current) {
                 current = current[key];
             } else {
                 return path; // Fallback to path string
             }
         }
-        return current;
+        return typeof current === 'string' ? current : path;
     };
 
     return (

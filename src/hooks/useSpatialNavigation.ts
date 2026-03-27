@@ -5,8 +5,19 @@ type Direction = "up" | "down" | "left" | "right";
 export function useSpatialNavigation() {
     const gamepadRef = useRef<number | null>(null);
     const lastActionTime = useRef<number>(0);
-    const lastRightClickTime = useRef<number>(0);
-    const rightClickCount = useRef<number>(0);
+    const lastLeftClickTime = useRef<number>(0);
+    const leftClickCount = useRef<number>(0);
+    const lastClickTarget = useRef<EventTarget | null>(null);
+
+    const isPointerBlocked = (el: HTMLElement): boolean => {
+        let node: Element | null = el.parentElement;
+        while (node && node !== document.body) {
+            if (node.classList.contains('pointer-events-auto')) return false;
+            if (node.classList.contains('pointer-events-none')) return true;
+            node = node.parentElement;
+        }
+        return false;
+    };
 
     const moveFocus = useCallback((direction: Direction) => {
         const activeElement = document.activeElement as HTMLElement | null;
@@ -16,8 +27,18 @@ export function useSpatialNavigation() {
             )
         ).filter(el => {
             const rect = el.getBoundingClientRect();
-            const isVisible = rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+            const style = getComputedStyle(el);
+            const isVisible = rect.width > 0 && rect.height > 0
+                && style.visibility !== "hidden"
+                && style.pointerEvents !== "none";
             if (!isVisible) return false;
+
+            // Exclude elements whose section is deactivated via pointer-events-none
+            // (but allow elements that have an explicit pointer-events-auto closer ancestor)
+            if (isPointerBlocked(el)) return false;
+
+            // Exclude elements inside containers marked as nav-excluded (e.g., Toolbar)
+            if (el.closest('[data-nav-exclude]')) return false;
 
             // If we are currently in a menu, only allow focusing other things in the SAME menu
             if (activeElement) {
@@ -32,8 +53,12 @@ export function useSpatialNavigation() {
         if (focusableElements.length === 0) return;
 
         if (!activeElement || !focusableElements.includes(activeElement)) {
-            // If no element is focused, focus the first one
-            focusableElements[0]?.focus();
+            // Prefer the first element NOT inside a toolbar/nav so that initial navigation
+            // lands on the first content card, not the first toolbar button.
+            const contentFirst = focusableElements.find(
+                el => !el.closest('nav, header, [role="navigation"], [role="toolbar"]')
+            );
+            (contentFirst ?? focusableElements[0])?.focus();
             return;
         }
 
@@ -62,52 +87,107 @@ export function useSpatialNavigation() {
 
             let isValidDir = false;
 
-            if (direction === "up" && dy < 0 && absDx <= absDy) {
+            if (direction === "up" && dy < 0 && absDx <= absDy * 2.0) {
                 isValidDir = true;
-            } else if (direction === "down" && dy > 0 && absDx <= absDy) {
+            } else if (direction === "down" && dy > 0 && absDx <= absDy * 2.0) {
                 isValidDir = true;
-            } else if (direction === "left" && dx < 0 && absDy <= absDx) {
+            } else if (direction === "left" && dx < 0 && absDy <= absDx * 2.0) {
                 isValidDir = true;
-            } else if (direction === "right" && dx > 0 && absDy <= absDx) {
+            } else if (direction === "right" && dx > 0 && absDy <= absDx * 2.0) {
                 isValidDir = true;
             }
 
             if (isValidDir) {
-                // Euclidean distance
-                const distance = Math.sqrt(dx * dx + dy * dy);
+                // Modified distance calculation to favor staying in the same row/column
+                // For UP/DOWN, horizontal distance (dx) is penalized more
+                // For LEFT/RIGHT, vertical distance (dy) is penalized more
+                const weightX = (direction === "up" || direction === "down") ? 2.5 : 1.0;
+                const weightY = (direction === "left" || direction === "right") ? 2.5 : 1.0;
+                
+                const distance = Math.sqrt((dx * weightX) ** 2 + (dy * weightY) ** 2);
+                
                 if (distance < minDistance) {
                     minDistance = distance;
                     bestMatch = el;
                 }
             }
         }
+        
+        // Wrap around logic: if no match in that direction, wrap within the same row/column
+        if (!bestMatch) {
+            const rowTolerance = activeRect.height * 0.6;
+            const colTolerance = activeRect.width * 0.6;
+            const activeCenterY = activeRect.top + activeRect.height / 2;
+            const activeCenterX = activeRect.left + activeRect.width / 2;
+
+            if (direction === "right") {
+                const sameRow = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.top + r.height / 2) - activeCenterY) <= rowTolerance;
+                });
+                const pool = sameRow.length > 0 ? sameRow : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
+                    curr.getBoundingClientRect().left < prev.getBoundingClientRect().left ? curr : prev
+                , pool[0]);
+            } else if (direction === "left") {
+                const sameRow = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.top + r.height / 2) - activeCenterY) <= rowTolerance;
+                });
+                const pool = sameRow.length > 0 ? sameRow : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
+                    curr.getBoundingClientRect().right > prev.getBoundingClientRect().right ? curr : prev
+                , pool[0]);
+            } else if (direction === "up") {
+                bestMatch = null; // No wrap-around going up
+            } else if (direction === "down") {
+                const sameCol = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.left + r.width / 2) - activeCenterX) <= colTolerance;
+                });
+                const pool = sameCol.length > 0 ? sameCol : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
+                    curr.getBoundingClientRect().top < prev.getBoundingClientRect().top ? curr : prev
+                , pool[0]);
+            }
+        }
 
         if (bestMatch) {
-            bestMatch.focus();
+            bestMatch.focus({ preventScroll: false });
+            bestMatch.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
         }
     }, []);
 
     useEffect(() => {
         // Keyboard Listener
         const handleKeyDown = (e: KeyboardEvent) => {
+            const isTyping =
+                document.activeElement instanceof HTMLInputElement ||
+                document.activeElement instanceof HTMLTextAreaElement;
+
             switch (e.key) {
                 case "ArrowUp":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("up");
                     break;
                 case "ArrowDown":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("down");
                     break;
                 case "ArrowLeft":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("left");
                     break;
                 case "ArrowRight":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("right");
                     break;
                 case "Enter":
+                    if (isTyping) return;
                     e.preventDefault();
                     if (document.activeElement instanceof HTMLElement) {
                         document.activeElement.click();
@@ -139,20 +219,23 @@ export function useSpatialNavigation() {
             }
         };
 
-        // Mouse Triple Left-Click Listener (Fallback/Local)
+        // Mouse Triple Left-Click Listener (same element required to avoid accidental triggers)
         const handleClick = (e: MouseEvent) => {
             if (e.button !== 0) return; // Only Left Click
-            
-            const now = Date.now();
-            if (now - lastRightClickTime.current > 1000) {
-                rightClickCount.current = 1;
-            } else {
-                rightClickCount.current += 1;
-            }
-            lastRightClickTime.current = now;
 
-            if (rightClickCount.current === 3) {
-                rightClickCount.current = 0;
+            const now = Date.now();
+            const sameTarget = e.target === lastClickTarget.current;
+
+            if (now - lastLeftClickTime.current > 1000 || !sameTarget) {
+                leftClickCount.current = 1;
+            } else {
+                leftClickCount.current += 1;
+            }
+            lastLeftClickTime.current = now;
+            lastClickTarget.current = e.target;
+
+            if (leftClickCount.current === 3) {
+                leftClickCount.current = 0;
                 import("@tauri-apps/api/core").then(({ invoke }) => {
                     invoke("kill_all_kiosks").catch(console.error);
                 });
@@ -171,33 +254,28 @@ export function useSpatialNavigation() {
         // Gamepad Polling Loop
         const pollGamepad = () => {
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
-            let activePad = null;
+            
             for (let i = 0; i < gamepads.length; i++) {
-                if (gamepads[i]) {
-                    activePad = gamepads[i];
-                    break;
-                }
-            }
-
-            if (activePad) {
+                const activePad = gamepads[i];
+                if (!activePad) continue;
                 const now = Date.now();
-                // Simple debounce to avoid flying through the UI (200ms)
-                if (now - lastActionTime.current > 200) {
-                    // D-PAD: Up(12), Down(13), Left(14), Right(15)
+                // Simple debounce to avoid flying through the UI (150ms is usually sweet spot for responsiveness)
+                if (now - lastActionTime.current > 150) {
                     let handled = false;
+                    const threshold = 0.6;
+                    const axisX = activePad.axes[0] || 0;
+                    const axisY = activePad.axes[1] || 0;
+                    
+                    // Allow navigation from axes (often mapping for D-pad on some controllers)
+                    const up = activePad.buttons[12]?.pressed || axisY < -threshold;
+                    const down = activePad.buttons[13]?.pressed || axisY > threshold;
+                    const left = activePad.buttons[14]?.pressed || axisX < -threshold;
+                    const right = activePad.buttons[15]?.pressed || axisX > threshold;
 
-                    if (activePad.buttons[12]?.pressed) { moveFocus("up"); handled = true; }
-                    else if (activePad.buttons[13]?.pressed) { moveFocus("down"); handled = true; }
-                    else if (activePad.buttons[14]?.pressed) { moveFocus("left"); handled = true; }
-                    else if (activePad.buttons[15]?.pressed) { moveFocus("right"); handled = true; }
-
-                    // L3 (10) + R3 (11) combo for Exit
-                    else if (activePad.buttons[10]?.pressed && activePad.buttons[11]?.pressed) {
-                        import("@tauri-apps/api/core").then(({ invoke }) => {
-                            invoke("kill_all_kiosks").catch(console.error);
-                        });
-                        handled = true;
-                    }
+                    if (up) { moveFocus("up"); handled = true; }
+                    else if (down) { moveFocus("down"); handled = true; }
+                    else if (left) { moveFocus("left"); handled = true; }
+                    else if (right) { moveFocus("right"); handled = true; }
 
                     // Action button (A / Cross = button 0)
                     else if (activePad.buttons[0]?.pressed) {
@@ -206,8 +284,28 @@ export function useSpatialNavigation() {
                         handled = true;
                     }
 
+                    // Context Menu (Y / Triangle = button 3 OR Start = button 9)
+                    else if (activePad.buttons[3]?.pressed || activePad.buttons[9]?.pressed) {
+                        const activeEl = document.activeElement as HTMLElement;
+                        if (activeEl) {
+                            // Try-catch and direct dispatch for responsiveness
+                            try {
+                                const event = new MouseEvent("contextmenu", {
+                                    bubbles: true,
+                                    cancelable: true,
+                                    view: window,
+                                    clientX: 0, // Signal programmatic
+                                    clientY: 0
+                                });
+                                activeEl.dispatchEvent(event);
+                            } catch (e) { console.error("Gamepad context menu error", e) }
+                        }
+                        handled = true;
+                    }
+
                     if (handled) {
                         lastActionTime.current = now;
+                        break; // Stop processing other gamepads for this frame if one handled it
                     }
                 }
             }

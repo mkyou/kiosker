@@ -11,6 +11,7 @@ export const translations = {
                 firefox_desc: "Melhor performance & privacidade",
                 chrome_desc: "Compatibilidade padrão",
                 migrating: "Migrando perfil...",
+                error: "Ocorreu um erro ao configurar o navegador. Tente novamente.",
             },
             startup: {
                 title: "Inicialização",
@@ -23,6 +24,17 @@ export const translations = {
                 export: "Exportar biblioteca (.sqlite)",
                 import: "Importar snapshot manual",
             },
+            language: {
+                title: "Idioma",
+                desc: "Escolha o idioma da interface do Kiosker.",
+            },
+            setup: {
+                welcome: "BEM-VINDO AO KIOSKER",
+                title: "Prepare sua experiência",
+                desc: "Escolha seu navegador principal para que possamos importar seus logins e configurações de streaming.",
+                recommended: "Recomendado",
+                privacy: "Seus dados permanecem locais e seguros",
+            },
             commands: {
                 title: "Guia de comandos",
                 desc: "Como controlar suas aplicações e o launcher em qualquer dispositivo.",
@@ -30,6 +42,9 @@ export const translations = {
                 header_keyboard: "Pelo teclado",
                 header_mouse: "Pelo mouse",
                 header_joystick: "Pelo joystick",
+                left_click: "Botão Esquerdo",
+                right_click: "Botão Direito",
+                triple_press: "(3x Rápido)",
                 exit: {
                     title: "Sair / fechar tudo",
                     desc: "Volta imediatamente para o Kiosker",
@@ -43,10 +58,6 @@ export const translations = {
                     mouse: "Botão direito",
                 }
             },
-            language: {
-                title: "Idioma",
-                desc: "Escolha o idioma da interface do Kiosker.",
-            }
         },
         common: {
             open: "Abrir",
@@ -56,6 +67,13 @@ export const translations = {
             restart: "Reiniciar",
             controller_hint: "Controlador: Enter ou Menu",
             loading: "Carregando...",
+            back: "Voltar",
+            favorite: "Favoritar",
+            remove_favorite: "Remover favorito",
+            edit: "Editar",
+            confirm_delete: "Tem certeza que deseja excluir?",
+            cancel: "Cancelar",
+            confirm: "Confirmar",
         },
         home: {
             recent: "Seus itens recentes",
@@ -63,6 +81,18 @@ export const translations = {
             web: "Web",
             start: "Início",
             hint_return: "para voltar ao kiosker sempre que necessário!",
+            add_site: 'Adicionar Site',
+            add_app: 'Adicionar App',
+            favorites: 'Favoritos',
+            apps_local: 'App Local',
+            empty_title: 'Biblioteca vazia',
+            empty_desc: 'Adicione serviços à sua interface utilizando os cartões de ação logo abaixo.',
+            search_placeholder: 'Buscar aplicativo (ex: Discord, VLC...)',
+            web_desc: "Adicione sites ou streamings favoritos para acesso rápido.",
+            apps_desc: "Escolha um aplicativo instalado no seu dispositivo para adicionar à biblioteca.",
+        },
+        entry_form: {
+            checking_alert: "Atenção: Falha na verificação"
         }
     },
     en: {
@@ -75,6 +105,7 @@ export const translations = {
                 firefox_desc: "Best performance & privacy",
                 chrome_desc: "Standard compatibility",
                 migrating: "Migrating profile...",
+                error: "An error occurred while setting up the browser. Please try again.",
             },
             startup: {
                 title: "Startup",
@@ -87,6 +118,17 @@ export const translations = {
                 export: "Export library (.sqlite)",
                 import: "Import manual snapshot",
             },
+            language: {
+                title: "Language",
+                desc: "Choose the Kiosker interface language.",
+            },
+            setup: {
+                welcome: "WELCOME TO KIOSKER",
+                title: "Prepare your experience",
+                desc: "Choose your primary browser so we can import your logins and streaming settings.",
+                recommended: "Recommended",
+                privacy: "Your data stays local and secure",
+            },
             commands: {
                 title: "Command guide",
                 desc: "How to control your applications and the launcher on any device.",
@@ -94,6 +136,9 @@ export const translations = {
                 header_keyboard: "Keyboard",
                 header_mouse: "Mouse",
                 header_joystick: "Joystick",
+                left_click: "Left Click",
+                right_click: "Right Click",
+                triple_press: "(3x Fast)",
                 exit: {
                     title: "Exit / close all",
                     desc: "Immediately return to Kiosker",
@@ -107,10 +152,6 @@ export const translations = {
                     mouse: "Right click",
                 }
             },
-            language: {
-                title: "Language",
-                desc: "Choose the Kiosker interface language.",
-            }
         },
         common: {
             open: "Open",
@@ -120,6 +161,13 @@ export const translations = {
             restart: "Restart",
             controller_hint: "Controller: Enter or Menu",
             loading: "Loading...",
+            back: "Back",
+            favorite: "Favorite",
+            remove_favorite: "Remove favorite",
+            edit: "Edit",
+            confirm_delete: "Are you sure you want to delete?",
+            cancel: "Cancel",
+            confirm: "Confirm",
         },
         home: {
             recent: "Your recent items",
@@ -127,6 +175,18 @@ export const translations = {
             web: "Web",
             start: "Home",
             hint_return: "to return to kiosker whenever needed!",
+            add_site: 'Add Site',
+            add_app: 'Add App',
+            favorites: 'Favorites',
+            apps_local: 'Local App',
+            empty_title: 'Empty Library',
+            empty_desc: 'Add services to your interface using the action cards below.',
+            search_placeholder: 'Search app (ex: Discord, VLC...)',
+            web_desc: "Add your favorite sites or streamings for quick access.",
+            apps_desc: "Choose an application installed on your device to add to the library.",
+        },
+        entry_form: {
+            checking_alert: "Attention: Verification failed"
         }
     },
     es: {
@@ -135,10 +195,11 @@ export const translations = {
             subtitle: "Configuraciones del sistema Kiosker.",
             browser: {
                 title: "Navegador de vídeo",
-                desc: "Elija el motor de navegación para sitios y transmisiones. Firefox es altamente recomendado por su compatibilidad con extensiones de privacidad.",
+                desc: "Elija el motor de navegación para sitios y transmisiones.",
                 firefox_desc: "Mejor rendimiento y privacidad",
                 chrome_desc: "Compatibilidad estándar",
                 migrating: "Migrando perfil...",
+                error: "Error al configurar el navegador.",
             },
             startup: {
                 title: "Inicio",
@@ -146,51 +207,71 @@ export const translations = {
                 autostart: "Iniciar con el sistema",
             },
             data: {
-                title: "Datos y copia de seguridad",
-                desc: "Gestione su biblioteca de aplicaciones y transmisiones guardadas.",
+                title: "Datos y backup",
+                desc: "Gestione su biblioteca.",
                 export: "Exportar biblioteca (.sqlite)",
                 import: "Importar snapshot manual",
-            },
-            commands: {
-                title: "Guía de comandos",
-                desc: "Cómo controlar sus aplicaciones y el lanzador en cualquier dispositivo.",
-                header_action: "Acción global",
-                header_keyboard: "Teclado",
-                header_mouse: "Ratón",
-                header_joystick: "Joystick",
-                exit: {
-                    title: "Salir / cerrar todo",
-                    desc: "Regresa inmediatamente a Kiosker",
-                    mouse: "3 clics rápidos (izq.)",
-                },
-                manage: {
-                    title: "Gestionar ítem",
-                    desc: "Acciones como 'Cerrar' o 'Reiniciar'",
-                    keyboard: "SHIFT + F10",
-                    keyboard_fallback: "o Shift + F10",
-                    mouse: "Clic derecho",
-                }
             },
             language: {
                 title: "Idioma",
                 desc: "Elija el idioma de la interfaz de Kiosker.",
-            }
+            },
+            setup: {
+                welcome: "BIENVENIDO A KIOSKER",
+                title: "Prepara tu experiencia",
+                desc: "Selecciona tu navegador principal.",
+                recommended: "Recomendado",
+                privacy: "Tus datos están seguros",
+            },
+            commands: {
+                title: "Guía de comandos",
+                desc: "Cómo controlar sus aplicaciones.",
+                header_action: "Acción global",
+                header_keyboard: "Teclado",
+                header_mouse: "Ratón",
+                header_joystick: "Joystick",
+                left_click: "Clic Izquierdo",
+                right_click: "Clic Derecho",
+                triple_press: "(3x Rápido)",
+                exit: {
+                    title: "Salir / cerrar todo",
+                    desc: "Regresa inmediatamente a Kiosker",
+                },
+                manage: {
+                    title: "Gestionar ítem",
+                    desc: "Acciones como 'Cerrar' o 'Reiniciar'",
+                }
+            },
         },
         common: {
             open: "Abrir",
             close: "Cerrar",
-            delete: "Eliminar de la biblioteca",
+            delete: "Eliminar",
             running: "Ejecutando",
             restart: "Reiniciar",
-            controller_hint: "Controlador: Enter o Menú",
             loading: "Cargando...",
+            back: "Volver",
+            confirm_delete: "¿Eliminar este ítem?",
+            cancel: "Cancelar",
+            confirm: "Confirmar",
         },
         home: {
             recent: "Tus elementos recientes",
             apps: "Aplicaciones",
             web: "Web",
             start: "Inicio",
-            hint_return: "para volver a kiosker siempre que sea necesario!",
+            add_site: 'Añadir Sitio',
+            add_app: 'Añadir App',
+            favorites: 'Favoritos',
+            apps_local: 'App Local',
+            empty_title: 'Biblioteca vacía',
+            empty_desc: 'Añada servicios a su interfaz utilizando las tarjetas de acción de abajo.',
+            search_placeholder: 'Buscar aplicación (ej: Discord, VLC...)',
+            web_desc: "Añada sus sitios o transmisiones favoritos para un acceso rápido.",
+            apps_desc: "Elija una aplicación instalada en su dispositivo para añadirla a la biblioteca.",
+        },
+        entry_form: {
+            checking_alert: "Atención: Fallo en la verificación"
         }
     },
     zh: {
@@ -199,10 +280,11 @@ export const translations = {
             subtitle: "Kiosker 系统配置。",
             browser: {
                 title: "视频浏览器",
-                desc: "选择网站和流媒体的导航引擎。强烈推荐使用 Firefox，因为它具有隐私扩展兼容性。",
+                desc: "选择网站和流媒体的导航引擎。",
                 firefox_desc: "最佳性能与隐私",
                 chrome_desc: "标准兼容性",
                 migrating: "正在迁移配置文件...",
+                error: "设置浏览器时出错。",
             },
             startup: {
                 title: "启动",
@@ -211,50 +293,70 @@ export const translations = {
             },
             data: {
                 title: "数据与备份",
-                desc: "管理您保存的应用和流媒体库。",
+                desc: "管理您的库。",
                 export: "导出库 (.sqlite)",
                 import: "手动导入快照",
-            },
-            commands: {
-                title: "命令指南",
-                desc: "如何在任何设备上控制您的应用程序和启动器。",
-                header_action: "全局操作",
-                header_keyboard: "键盘",
-                header_mouse: "鼠标",
-                header_joystick: "摇杆",
-                exit: {
-                    title: "退出 / 全部关闭",
-                    desc: "立即返回 Kiosker",
-                    mouse: "3次左键快速点击",
-                },
-                manage: {
-                    title: "管理项目",
-                    desc: "类似于'关闭'或'重启'的操作",
-                    keyboard: "SHIFT + F10",
-                    keyboard_fallback: "或 Shift + F10",
-                    mouse: "右键点击",
-                }
             },
             language: {
                 title: "语言",
                 desc: "选择 Kiosker 界面语言。",
-            }
+            },
+            setup: {
+                welcome: "欢迎使用 KIOSKER",
+                title: "准备您的体验",
+                desc: "选择您的主浏览器。",
+                recommended: "推荐",
+                privacy: "您的数据是安全的",
+            },
+            commands: {
+                title: "命令指南",
+                desc: "如何控制您的应用程序。",
+                header_action: "全局操作",
+                header_keyboard: "键盘",
+                header_mouse: "鼠标",
+                header_joystick: "摇杆",
+                left_click: "左键点击",
+                right_click: "右键点击",
+                triple_press: "(3次快速)",
+                exit: {
+                    title: "退出 / 全部关闭",
+                    desc: "立即返回 Kiosker",
+                },
+                manage: {
+                    title: "管理项目",
+                    desc: "如'关闭'或'重启'的操作",
+                }
+            },
         },
         common: {
             open: "打开",
             close: "关闭",
-            delete: "从库中删除",
+            delete: "删除",
             running: "正在运行",
             restart: "重启",
-            controller_hint: "控制器：Enter 或 菜单",
             loading: "正在加载...",
+            back: "返回",
+            confirm_delete: "您确定要删除吗？",
+            cancel: "取消",
+            confirm: "确认",
         },
         home: {
             recent: "您最近的项目",
             apps: "应用",
             web: "网页",
             start: "首页",
-            hint_return: "随时返回 Kiosker！",
+            add_site: '添加网站',
+            add_app: '添加应用',
+            favorites: '收藏夹',
+            apps_local: '本地应用',
+            empty_title: '空库',
+            empty_desc: '使用下面的操作卡将服务添加到您的界面。',
+            search_placeholder: '搜索应用 (例如: Discord, VLC...)',
+            web_desc: "添加您最喜欢的网站或流媒体以进行快速访问。",
+            apps_desc: "选择您设备上安装的应用程序以添加到库中。",
+        },
+        entry_form: {
+            checking_alert: "注意：验证失败"
         }
     }
 };
