@@ -228,7 +228,7 @@ describe('Settings – toast lifecycle', () => {
         fireEvent.click(screen.getByText(/Exportar biblioteca/i).closest('button')!);
         await waitFor(() => expect(screen.getByText('exported OK')).toBeInTheDocument());
 
-        await act(async () => { vi.advanceTimersByTime(3000); });
+        await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
 
         expect(screen.queryByText('exported OK')).not.toBeInTheDocument();
         vi.useRealTimers();

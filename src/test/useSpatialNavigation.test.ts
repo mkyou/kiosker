@@ -188,7 +188,7 @@ describe('useSpatialNavigation – Mouse Triple-Click', () => {
         vi.restoreAllMocks();
     });
 
-    it('three left-clicks within 1000ms invoke kill_all_kiosks', async () => {
+    it('three left-clicks on the same target within 1000ms invoke kill_all_kiosks', async () => {
         renderHook(() => useSpatialNavigation());
         vi.setSystemTime(0);
         window.dispatchEvent(new MouseEvent('click', { button: 0 }));
@@ -200,6 +200,21 @@ describe('useSpatialNavigation – Mouse Triple-Click', () => {
         vi.useRealTimers();
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         expect(mockInvoke).toHaveBeenCalledWith('kill_all_kiosks');
+    });
+
+    it('three clicks on different elements do NOT invoke kill_all_kiosks', () => {
+        renderHook(() => useSpatialNavigation());
+        const divA = document.createElement('div');
+        const divB = document.createElement('div');
+        const divC = document.createElement('div');
+        document.body.append(divA, divB, divC);
+        vi.setSystemTime(0);
+        divA.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        vi.setSystemTime(200);
+        divB.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        vi.setSystemTime(400);
+        divC.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        expect(mockInvoke).not.toHaveBeenCalledWith('kill_all_kiosks');
     });
 
     it('third click after >1000ms from previous resets count and does NOT invoke kill_all_kiosks', () => {
@@ -251,6 +266,45 @@ describe('useSpatialNavigation – Wrap-around', () => {
         renderHook(() => useSpatialNavigation());
         pressKey('ArrowDown');
         expect(document.activeElement?.id).toBe('top-card');
+    });
+
+    it('ArrowRight on last grid item wraps to first of same row, skipping the toolbar', () => {
+        setupDOM([
+            { id: 'toolbar-btn', left: 10,  top: 10,  width: 50, height: 30 },
+            { id: 'grid-a',      left: 10,  top: 200, width: 50, height: 50 },
+            { id: 'grid-b',      left: 200, top: 200, width: 50, height: 50 },
+            { id: 'grid-c',      left: 400, top: 200, width: 50, height: 50 },
+        ]);
+        document.getElementById('grid-c')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowRight');
+        expect(document.activeElement?.id).toBe('grid-a');
+    });
+
+    it('ArrowLeft on first grid item wraps to last of same row, skipping the toolbar', () => {
+        setupDOM([
+            { id: 'toolbar-btn', left: 10,  top: 10,  width: 50, height: 30 },
+            { id: 'grid-a',      left: 10,  top: 200, width: 50, height: 50 },
+            { id: 'grid-b',      left: 200, top: 200, width: 50, height: 50 },
+            { id: 'grid-c',      left: 400, top: 200, width: 50, height: 50 },
+        ]);
+        document.getElementById('grid-a')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowLeft');
+        expect(document.activeElement?.id).toBe('grid-c');
+    });
+
+    it('ArrowDown on last row item wraps to same column in first row, skipping other columns', () => {
+        setupDOM([
+            { id: 'col-a-top', left: 10,  top: 10,  width: 50, height: 50 },
+            { id: 'col-b-top', left: 200, top: 10,  width: 50, height: 50 },
+            { id: 'col-a-bot', left: 10,  top: 200, width: 50, height: 50 },
+            { id: 'col-b-bot', left: 200, top: 200, width: 50, height: 50 },
+        ]);
+        document.getElementById('col-b-bot')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowDown');
+        expect(document.activeElement?.id).toBe('col-b-top');
     });
 
     it('ArrowUp on the topmost element does NOT move focus (no up wrap)', () => {
@@ -365,19 +419,6 @@ describe('useSpatialNavigation – Gamepad Button Actions', () => {
         renderHook(() => useSpatialNavigation());
         vi.advanceTimersByTime(200);
         expect(ctxSpy).toHaveBeenCalled();
-    });
-
-    it('L3+R3 combo pressed 3 times within 1000ms invokes kill_all_kiosks', async () => {
-        mockGetGamepads.mockReturnValue([
-            makePad({ buttons: Array(16).fill(false).map((_, i) => i === 10 || i === 11) }),
-        ]);
-        vi.setSystemTime(200);
-        renderHook(() => useSpatialNavigation());
-        vi.advanceTimersByTime(600);
-        // Switch to real timers so the dynamic import Promise chain can resolve.
-        vi.useRealTimers();
-        await new Promise<void>(resolve => setTimeout(resolve, 0));
-        expect(mockInvoke).toHaveBeenCalledWith('kill_all_kiosks');
     });
 
     it('second gamepad action within the 150ms debounce window is ignored', () => {

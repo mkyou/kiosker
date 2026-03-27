@@ -7,8 +7,7 @@ export function useSpatialNavigation() {
     const lastActionTime = useRef<number>(0);
     const lastLeftClickTime = useRef<number>(0);
     const leftClickCount = useRef<number>(0);
-    const gamepadComboCount = useRef<number>(0);
-    const lastGamepadComboTime = useRef<number>(0);
+    const lastClickTarget = useRef<EventTarget | null>(null);
 
     const moveFocus = useCallback((direction: Direction) => {
         const activeElement = document.activeElement as HTMLElement | null;
@@ -95,27 +94,42 @@ export function useSpatialNavigation() {
             }
         }
         
-        // Wrap around logic: if no match in that direction, try to wrap to the other side
+        // Wrap around logic: if no match in that direction, wrap within the same row/column
         if (!bestMatch) {
+            const rowTolerance = activeRect.height * 0.6;
+            const colTolerance = activeRect.width * 0.6;
+            const activeCenterY = activeRect.top + activeRect.height / 2;
+            const activeCenterX = activeRect.left + activeRect.width / 2;
+
             if (direction === "right") {
-                // Find element furthest to the left
-                bestMatch = focusableElements.reduce((prev, curr) => 
+                const sameRow = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.top + r.height / 2) - activeCenterY) <= rowTolerance;
+                });
+                const pool = sameRow.length > 0 ? sameRow : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
                     curr.getBoundingClientRect().left < prev.getBoundingClientRect().left ? curr : prev
-                , focusableElements[0]);
+                , pool[0]);
             } else if (direction === "left") {
-                // Find element furthest to the right
-                bestMatch = focusableElements.reduce((prev, curr) => 
+                const sameRow = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.top + r.height / 2) - activeCenterY) <= rowTolerance;
+                });
+                const pool = sameRow.length > 0 ? sameRow : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
                     curr.getBoundingClientRect().right > prev.getBoundingClientRect().right ? curr : prev
-                , focusableElements[0]);
+                , pool[0]);
             } else if (direction === "up") {
-                // User preferred NO wrap-around for UP (stay at top/header)
-                // But we can try to find the actual top-most element if we were somehow stuck
-                bestMatch = null; 
+                bestMatch = null; // No wrap-around going up
             } else if (direction === "down") {
-                // Wrap around to the top
-                bestMatch = focusableElements.reduce((prev, curr) => 
+                const sameCol = focusableElements.filter(el => {
+                    const r = el.getBoundingClientRect();
+                    return Math.abs((r.left + r.width / 2) - activeCenterX) <= colTolerance;
+                });
+                const pool = sameCol.length > 0 ? sameCol : focusableElements;
+                bestMatch = pool.reduce((prev, curr) =>
                     curr.getBoundingClientRect().top < prev.getBoundingClientRect().top ? curr : prev
-                , focusableElements[0]);
+                , pool[0]);
             }
         }
 
@@ -176,17 +190,20 @@ export function useSpatialNavigation() {
             }
         };
 
-        // Mouse Triple Left-Click Listener (Fallback/Local)
+        // Mouse Triple Left-Click Listener (same element required to avoid accidental triggers)
         const handleClick = (e: MouseEvent) => {
             if (e.button !== 0) return; // Only Left Click
-            
+
             const now = Date.now();
-            if (now - lastLeftClickTime.current > 1000) {
+            const sameTarget = e.target === lastClickTarget.current;
+
+            if (now - lastLeftClickTime.current > 1000 || !sameTarget) {
                 leftClickCount.current = 1;
             } else {
                 leftClickCount.current += 1;
             }
             lastLeftClickTime.current = now;
+            lastClickTarget.current = e.target;
 
             if (leftClickCount.current === 3) {
                 leftClickCount.current = 0;
@@ -230,25 +247,6 @@ export function useSpatialNavigation() {
                     else if (down) { moveFocus("down"); handled = true; }
                     else if (left) { moveFocus("left"); handled = true; }
                     else if (right) { moveFocus("right"); handled = true; }
-
-                    // L3 (10) + R3 (11) combo for Exit - 3x fast
-                    else if (activePad.buttons[10]?.pressed && activePad.buttons[11]?.pressed) {
-                        const nowCombo = Date.now();
-                        if (nowCombo - lastGamepadComboTime.current > 1000) {
-                            gamepadComboCount.current = 1;
-                        } else {
-                            gamepadComboCount.current += 1;
-                        }
-                        lastGamepadComboTime.current = nowCombo;
-
-                        if (gamepadComboCount.current >= 3) {
-                            gamepadComboCount.current = 0;
-                            import("@tauri-apps/api/core").then(({ invoke }) => {
-                                invoke("kill_all_kiosks").catch(console.error);
-                            });
-                        }
-                        handled = true;
-                    }
 
                     // Action button (A / Cross = button 0)
                     else if (activePad.buttons[0]?.pressed) {
