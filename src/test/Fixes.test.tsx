@@ -4,8 +4,6 @@ import { useSpatialNavigation } from "../hooks/useSpatialNavigation";
 import { TranslationProvider } from "../hooks/useTranslation";
 import { AddEntryForm } from "../components/AddEntryForm";
 import { Toolbar } from "../components/Toolbar";
-import React from 'react';
-
 // Mock Tauri invoke globally
 vi.mock("@tauri-apps/api/core", () => ({
     invoke: vi.fn(),

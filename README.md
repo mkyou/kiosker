@@ -2,27 +2,53 @@
   <img src="public/kiosker-icon.png" alt="Kiosker Logo" width="128">
   <h1>Kiosker</h1>
   <p><em>Um Hub de Entretenimento e Aplicações com Minimalismo Cinemático</em></p>
+
+  <p>
+    <img alt="Windows" src="https://img.shields.io/badge/Windows-0078D6?style=flat&logo=windows&logoColor=white">
+    <img alt="Linux" src="https://img.shields.io/badge/Linux-FCC624?style=flat&logo=linux&logoColor=black">
+    <img alt="Tauri" src="https://img.shields.io/badge/Tauri-24C8D8?style=flat&logo=tauri&logoColor=white">
+    <img alt="React" src="https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black">
+  </p>
 </div>
 
-O **Kiosker** é uma aplicação que objetiva transformar seu computador Windows em um hub de entretenimento navegável por mouse/teclado/joystick.
-Está disponível através de um instalador para Windows x64.
+O **Kiosker** é uma aplicação desktop que transforma seu computador em um hub de entretenimento navegável por mouse, teclado ou joystick. Disponível para **Windows** e **Linux**.
 
-1. Vá até a página de **[Releases](../../releases)** deste repositório (no menu lateral direito do GitHub).
-2. Baixe o instalador mais recente:
-   - `Kiosker_vX.X.X_x64-setup.exe` (Recomendado)
-   - *Alternativa:* Baixe o `Kiosker_vX.X.X_x64_en-US.msi`
-3. Execute o botão duplo no arquivo baixado e siga o assistente de instalação (Next > Next > Install).
+## Download
 
-## 🚀 Como Usar
-A ideia do Kiosker é ser simples, direto, e utilizável de distintas formas.
-- Você pode navegar por teclado usando as `setas` + `enter`;
-- Você pode navegar pelo mouse;
-- Você pode navegar por joysticks usando o direcional e o botão X/A.
+Vá até a aba **[Actions](../../actions)** deste repositório, clique no build mais recente e baixe o artefato correspondente ao seu sistema:
 
-O Kiosker invoca aplicações em tela cheia/executa sites no modo `--kiosk` do navegador. Para retornar ao hub, use o atalho `CTRL` + `SHIFT` + `Q`, ou 3x cliques com o botão direito do mouse, ou ainda os botões `Start` + `X/A` do joystick.
+| Sistema | Arquivo | Descrição |
+|---------|---------|-----------|
+| Windows | `Kiosker_vX.X.X_x64-setup.exe` | Instalador NSIS (recomendado) |
+| Windows | `Kiosker_vX.X.X_x64_en-US.msi` | Pacote MSI alternativo |
+| Linux   | `kiosker_X.X.X_amd64.deb` | Pacote Debian/Ubuntu (recomendado) |
+| Linux   | `kiosker_X.X.X_amd64.AppImage` | AppImage portátil |
 
-## Roadmaps
-O Kiosker está em um estado embrionário. Boa parte do que era desejável com ele já está pronto, mas temos algumas melhorias em mente:
-- O ícone do Kiosker foi gerado com IA. Queremos refiná-lo para que a identidade visual da aplicação fique mais refinada.
-- Os cards gerados pelas aplicações carecem de detalhes estéticos. Precisamos implementar uma lógica mais robusta para buscar as imagens/ícones das aplicações.
-- Eventuais problemas serão registrados no roadmap.
+**Linux (.deb):**
+```bash
+sudo dpkg -i kiosker_*.deb
+```
+
+**Linux (AppImage):**
+```bash
+chmod +x kiosker_*.AppImage && ./kiosker_*.AppImage
+```
+
+## Como Usar
+
+O Kiosker foi pensado para ser simples e operar com qualquer dispositivo de entrada:
+
+| Ação | Teclado | Mouse | Joystick |
+|------|---------|-------|----------|
+| Navegar | `↑ ↓ ← →` | Clique | Direcional / Analógico |
+| Abrir / Confirmar | `Enter` | Clique | `A` / `X` |
+| Menu de opções | `Shift+F10` | Botão direito | `Y` / `Triângulo` ou `Start` |
+| Sair do Kiosker | `Ctrl+Shift+Q` | 3× clique esquerdo | — |
+
+O Kiosker abre aplicativos em tela cheia e executa sites no modo `--kiosk` do navegador. Para voltar ao hub use qualquer um dos atalhos de saída acima.
+
+## Roadmap
+
+- Refinar o ícone da aplicação (atualmente gerado com IA)
+- Lógica mais robusta para buscar imagens/ícones das aplicações nos cards
+- Registro de eventuais problemas no roadmap à medida que surgirem
