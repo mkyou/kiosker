@@ -25,7 +25,6 @@ export function MediaCard({ id, title, target_path, item_type, background_url, i
     const [newTitle, setNewTitle] = useState(title);
     const menuRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-    const cardRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!showMenu) return;
