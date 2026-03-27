@@ -135,7 +135,7 @@ pub fn get_executable_metadata(path: String) -> Result<LocalExecMetadata, String
                             buffer.as_mut_ptr() as *mut _,
                         );
 
-                        if copied > 0 {
+                        if copied as usize == buffer_size {
                             let mut rgba_buffer = vec![0u8; (width * height * 4) as usize];
                             for i in 0..(width * height) as usize {
                                 let bgra_idx = i * bytes_per_pixel;

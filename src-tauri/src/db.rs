@@ -207,7 +207,19 @@ pub async fn import_database(app_handle: AppHandle, state: State<'_, AppState>) 
     if let Some(src) = file_path {
         let app_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
         let db_path = app_dir.join("kiosker.sqlite");
-        
+
+        // Verify integrity before touching the live database.
+        {
+            let check_conn = Connection::open(src.to_string())
+                .map_err(|e| format!("Arquivo inválido ou corrompido: {}", e))?;
+            let integrity: String = check_conn
+                .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+                .map_err(|e| format!("Falha na verificação de integridade: {}", e))?;
+            if integrity != "ok" {
+                return Err(format!("Arquivo SQLite corrompido: {}", integrity));
+            }
+        }
+
         // Hold the lock for the entire swap so no other handler can use
         // the in-memory placeholder while the file copy is in progress.
         let mut conn = state.db.lock().map_err(|e| e.to_string())?;
