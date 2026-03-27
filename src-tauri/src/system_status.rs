@@ -93,6 +93,5 @@ fn get_wifi_connected() -> bool {
             }
         }
     }
-    // As a fallback, assume true if we can't accurately detect, to not distress the user.
-    true
+    false
 }
