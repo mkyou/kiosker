@@ -208,23 +208,24 @@ pub async fn import_database(app_handle: AppHandle, state: State<'_, AppState>) 
         let app_dir = app_handle.path().app_data_dir().map_err(|e| e.to_string())?;
         let db_path = app_dir.join("kiosker.sqlite");
         
-        // On Windows, the file is locked while the Connection is open.
-        // We replace the connection with a temporary in-memory one to close the file.
-        {
-            let mut conn = state.db.lock().map_err(|e| e.to_string())?;
-            *conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
-        }
-        
-        // Small delay to ensure the OS releases the file lock
+        // Hold the lock for the entire swap so no other handler can use
+        // the in-memory placeholder while the file copy is in progress.
+        let mut conn = state.db.lock().map_err(|e| e.to_string())?;
+
+        // On Windows, temporarily swap to in-memory to release the file lock.
+        *conn = Connection::open_in_memory().map_err(|e| e.to_string())?;
         std::thread::sleep(std::time::Duration::from_millis(100));
 
-        fs::copy(src.to_string(), &db_path).map_err(|e| e.to_string())?;
-        
-        // Re-initialize the connection to the new database file
-        {
-            let mut conn = state.db.lock().map_err(|e| e.to_string())?;
-            *conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
+        if let Err(e) = fs::copy(src.to_string(), &db_path) {
+            // Best-effort recovery: reopen the original file if it still exists.
+            if db_path.exists() {
+                *conn = Connection::open(&db_path)
+                    .unwrap_or_else(|_| Connection::open_in_memory().unwrap());
+            }
+            return Err(format!("Falha ao copiar arquivo: {}", e));
         }
+
+        *conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
 
         Ok("Biblioteca importada com sucesso!".to_string())
     } else {
@@ -233,8 +234,7 @@ pub async fn import_database(app_handle: AppHandle, state: State<'_, AppState>) 
 }
 #[cfg(test)]
 mod tests {
-    
-    use rusqlite::Connection;
+    use rusqlite::{Connection, OptionalExtension};
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
@@ -246,7 +246,8 @@ mod tests {
                 target_path TEXT NOT NULL,
                 icon_url TEXT,
                 background_url TEXT,
-                description TEXT
+                description TEXT,
+                is_favorite BOOLEAN DEFAULT 0
             )",
             [],
         ).unwrap();
@@ -260,20 +261,210 @@ mod tests {
         conn
     }
 
+    fn insert_item(conn: &Connection, title: &str, item_type: &str, target_path: &str) -> i64 {
+        conn.execute(
+            "INSERT INTO items (title, item_type, target_path, is_favorite) VALUES (?1, ?2, ?3, 0)",
+            (title, item_type, target_path),
+        ).unwrap();
+        conn.last_insert_rowid()
+    }
+
+    // ─── add_item + get_items ────────────────────────────────────────────────
+
     #[test]
     fn test_add_and_get_item() {
         let conn = setup_test_db();
-        
-        // Simulating add_item logic
-        conn.execute(
-            "INSERT INTO items (title, item_type, target_path) VALUES (?1, ?2, ?3)",
-            ("Test App", "exe", "C:/test.exe"),
-        ).unwrap();
+        insert_item(&conn, "Test App", "exe", "C:/test.exe");
 
-        let mut stmt = conn.prepare("SELECT title FROM items").unwrap();
-        let title: String = stmt.query_row([], |row| row.get(0)).unwrap();
+        let title: String = conn
+            .query_row("SELECT title FROM items", [], |row| row.get(0))
+            .unwrap();
         assert_eq!(title, "Test App");
     }
+
+    #[test]
+    fn test_add_item_rejects_duplicate_target_path() {
+        let conn = setup_test_db();
+        insert_item(&conn, "App A", "exe", "C:/app.exe");
+
+        let count: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM items WHERE target_path = ?1",
+                ["C:/app.exe"],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert!(count > 0, "duplicata deve ser detectada antes de inserir");
+    }
+
+    #[test]
+    fn test_add_item_accepts_different_target_paths() {
+        let conn = setup_test_db();
+        insert_item(&conn, "App A", "exe", "C:/app_a.exe");
+        insert_item(&conn, "App B", "exe", "C:/app_b.exe");
+
+        let count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM items", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    // ─── is_favorite schema ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_is_favorite_defaults_to_false() {
+        let conn = setup_test_db();
+        insert_item(&conn, "App", "exe", "C:/app.exe");
+
+        let is_fav: i32 = conn
+            .query_row("SELECT is_favorite FROM items", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(is_fav, 0);
+    }
+
+    #[test]
+    fn test_get_items_returns_is_favorite_correctly() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "App", "exe", "C:/app.exe");
+        conn.execute("UPDATE items SET is_favorite = 1 WHERE id = ?1", [id])
+            .unwrap();
+
+        let is_fav: i32 = conn
+            .query_row(
+                "SELECT is_favorite FROM items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(is_fav, 1);
+    }
+
+    // ─── toggle_favorite ─────────────────────────────────────────────────────
+
+    #[test]
+    fn test_toggle_favorite_sets_true() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "App", "exe", "C:/app.exe");
+
+        conn.execute("UPDATE items SET is_favorite = 1 WHERE id = ?1", [id])
+            .unwrap();
+
+        let is_fav: i32 = conn
+            .query_row(
+                "SELECT is_favorite FROM items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(is_fav, 1);
+    }
+
+    #[test]
+    fn test_toggle_favorite_sets_false() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "App", "exe", "C:/app.exe");
+
+        conn.execute("UPDATE items SET is_favorite = 1 WHERE id = ?1", [id])
+            .unwrap();
+        conn.execute("UPDATE items SET is_favorite = 0 WHERE id = ?1", [id])
+            .unwrap();
+
+        let is_fav: i32 = conn
+            .query_row(
+                "SELECT is_favorite FROM items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(is_fav, 0);
+    }
+
+    // ─── delete_item ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_delete_item_removes_correct_item() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "App to Delete", "exe", "C:/delete_me.exe");
+
+        conn.execute("DELETE FROM items WHERE id = ?1", [id]).unwrap();
+
+        let count: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_delete_item_does_not_remove_other_items() {
+        let conn = setup_test_db();
+        let id_a = insert_item(&conn, "App A", "exe", "C:/app_a.exe");
+        let id_b = insert_item(&conn, "App B", "exe", "C:/app_b.exe");
+
+        conn.execute("DELETE FROM items WHERE id = ?1", [id_a]).unwrap();
+
+        let count: i32 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM items WHERE id = ?1",
+                [id_b],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
+    }
+
+    // ─── update_item ─────────────────────────────────────────────────────────
+
+    #[test]
+    fn test_update_item_changes_title() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "Old Title", "exe", "C:/app.exe");
+
+        conn.execute(
+            "UPDATE items SET title = ?1 WHERE id = ?2",
+            ("New Title", id),
+        )
+        .unwrap();
+
+        let title: String = conn
+            .query_row(
+                "SELECT title FROM items WHERE id = ?1",
+                [id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(title, "New Title");
+    }
+
+    #[test]
+    fn test_update_item_does_not_change_other_fields() {
+        let conn = setup_test_db();
+        let id = insert_item(&conn, "Old Title", "exe", "C:/app.exe");
+        conn.execute("UPDATE items SET is_favorite = 1 WHERE id = ?1", [id])
+            .unwrap();
+
+        conn.execute(
+            "UPDATE items SET title = ?1 WHERE id = ?2",
+            ("New Title", id),
+        )
+        .unwrap();
+
+        let (item_type, target_path, is_fav): (String, String, i32) = conn
+            .query_row(
+                "SELECT item_type, target_path, is_favorite FROM items WHERE id = ?1",
+                [id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .unwrap();
+        assert_eq!(item_type, "exe");
+        assert_eq!(target_path, "C:/app.exe");
+        assert_eq!(is_fav, 1);
+    }
+
+    // ─── settings ────────────────────────────────────────────────────────────
 
     #[test]
     fn test_browser_persistence() {
@@ -281,41 +472,64 @@ mod tests {
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
             ("preferred_browser", "firefox"),
-        ).unwrap();
-        let val: String = conn.query_row(
-            "SELECT value FROM settings WHERE key = ?1",
-            ["preferred_browser"],
-            |row| row.get(0),
-        ).unwrap();
+        )
+        .unwrap();
+        let val: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                ["preferred_browser"],
+                |row| row.get(0),
+            )
+            .unwrap();
         assert_eq!(val, "firefox");
 
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
             ("preferred_browser", "chrome"),
-        ).unwrap();
-        let val_new: String = conn.query_row(
-            "SELECT value FROM settings WHERE key = ?1",
-            ["preferred_browser"],
-            |row| row.get(0),
-        ).unwrap();
+        )
+        .unwrap();
+        let val_new: String = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                ["preferred_browser"],
+                |row| row.get(0),
+            )
+            .unwrap();
         assert_eq!(val_new, "chrome");
     }
 
     #[test]
     fn test_language_persistence() {
         let conn = setup_test_db();
-        let languages = ["pt", "en", "es", "zh"];
-        for lang in languages {
+        for lang in ["pt", "en", "es", "zh"] {
             conn.execute(
                 "INSERT OR REPLACE INTO settings (key, value) VALUES (?1, ?2)",
                 ("language", lang),
-            ).unwrap();
-            let stored: String = conn.query_row(
-                "SELECT value FROM settings WHERE key = ?1",
-                ["language"],
-                |row| row.get(0),
-            ).unwrap();
+            )
+            .unwrap();
+            let stored: String = conn
+                .query_row(
+                    "SELECT value FROM settings WHERE key = ?1",
+                    ["language"],
+                    |row| row.get(0),
+                )
+                .unwrap();
             assert_eq!(stored, lang);
         }
+    }
+
+    #[test]
+    fn test_get_setting_returns_none_for_missing_key() {
+        let conn = setup_test_db();
+
+        let val: Option<String> = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                ["nonexistent_key"],
+                |row| row.get(0),
+            )
+            .optional()
+            .unwrap();
+        assert!(val.is_none());
     }
 }
