@@ -33,13 +33,12 @@ export function useSpatialNavigation() {
         if (focusableElements.length === 0) return;
 
         if (!activeElement || !focusableElements.includes(activeElement)) {
-            // Find the most logical first element (usually first item in grid or first menu btn)
-            const firstElement = focusableElements[0];
-            if (firstElement) {
-                firstElement.focus();
-                // After focusing, if it's not a scrollable area, we might want to move 
-                // but for now, focusing is the first step.
-            }
+            // Prefer the first element NOT inside a toolbar/nav so that initial navigation
+            // lands on the first content card, not the first toolbar button.
+            const contentFirst = focusableElements.find(
+                el => !el.closest('nav, header, [role="navigation"], [role="toolbar"]')
+            );
+            (contentFirst ?? focusableElements[0])?.focus();
             return;
         }
 
@@ -68,7 +67,7 @@ export function useSpatialNavigation() {
 
             let isValidDir = false;
 
-            if (direction === "up" && dy < 0 && absDx <= absDy * 4.0) {
+            if (direction === "up" && dy < 0 && absDx <= absDy * 2.0) {
                 isValidDir = true;
             } else if (direction === "down" && dy > 0 && absDx <= absDy * 2.0) {
                 isValidDir = true;

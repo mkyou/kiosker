@@ -229,6 +229,105 @@ describe('useSpatialNavigation – Mouse Triple-Click', () => {
     });
 });
 
+// ─── Angular Tolerance (#9) ───────────────────────────────────────────────────
+
+describe('useSpatialNavigation – Angular Tolerance', () => {
+    beforeEach(() => {
+        Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: vi.fn().mockReturnValue([]) });
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    it('ArrowUp excludes wide-angle elements outside the 63° cone (absDx > absDy*2)', () => {
+        // dx=200, dy=-50 → absDx=200 > absDy*2=100 → excluded with *2.0
+        // With the old *4.0 it would have been included (200 <= 50*4=200) and
+        // focused as the only "up" candidate even though it is far to the right.
+        setupDOM([
+            { id: 'active',   left: 100, top: 300 },
+            { id: 'wide-up',  left: 300, top: 250 },  // far right, barely above
+        ]);
+        document.getElementById('active')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowUp');
+        // No valid candidate in the tighter cone → no wrap-up → focus stays
+        expect(document.activeElement?.id).toBe('active');
+    });
+
+    it('ArrowUp still focuses the element directly above (symmetric with other directions)', () => {
+        setupDOM([
+            { id: 'center', left: 100, top: 200 },
+            { id: 'above',  left: 100, top: 10  },
+        ]);
+        document.getElementById('center')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowUp');
+        expect(document.activeElement?.id).toBe('above');
+    });
+});
+
+// ─── Initial Focus (#10) ──────────────────────────────────────────────────────
+
+describe('useSpatialNavigation – Initial Focus', () => {
+    beforeEach(() => {
+        Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: vi.fn().mockReturnValue([]) });
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    it('first arrow press skips <nav> elements and focuses the first content element', () => {
+        document.body.innerHTML = `
+            <nav>
+                <div tabindex="0" id="nav-btn"
+                     style="position:absolute;left:10px;top:10px;width:80px;height:30px;"></div>
+            </nav>
+            <div>
+                <div tabindex="0" id="card-1"
+                     style="position:absolute;left:10px;top:120px;width:50px;height:50px;"></div>
+            </div>
+        `;
+        document.getElementById('nav-btn')!.getBoundingClientRect = vi.fn(() => ({
+            left: 10, top: 10, right: 90, bottom: 40, width: 80, height: 30, x: 10, y: 10,
+        } as DOMRect));
+        document.getElementById('card-1')!.getBoundingClientRect = vi.fn(() => ({
+            left: 10, top: 120, right: 60, bottom: 170, width: 50, height: 50, x: 10, y: 120,
+        } as DOMRect));
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block' } as any);
+
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowDown');
+        expect(document.activeElement?.id).toBe('card-1');
+    });
+
+    it('falls back to first focusable element when all elements are inside <nav>', () => {
+        document.body.innerHTML = `
+            <nav>
+                <div tabindex="0" id="nav-a"
+                     style="position:absolute;left:10px;top:10px;width:50px;height:30px;"></div>
+                <div tabindex="0" id="nav-b"
+                     style="position:absolute;left:80px;top:10px;width:50px;height:30px;"></div>
+            </nav>
+        `;
+        (['nav-a', 'nav-b'] as const).forEach((id, i) => {
+            document.getElementById(id)!.getBoundingClientRect = vi.fn(() => ({
+                left: 10 + i * 70, top: 10, right: 60 + i * 70, bottom: 40,
+                width: 50, height: 30, x: 10 + i * 70, y: 10,
+            } as DOMRect));
+        });
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block' } as any);
+
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowRight');
+        // Falls back to first focusable element (nav-a)
+        expect(document.activeElement?.id).toBe('nav-a');
+    });
+});
+
 // ─── Wrap-around ─────────────────────────────────────────────────────────────
 
 describe('useSpatialNavigation – Wrap-around', () => {

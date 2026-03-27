@@ -64,6 +64,7 @@ export function VirtualKeyboard({ onKeyPress, onClose }: VirtualKeyboardProps) {
             {row.map((key, keyIndex) => (
               <button
                 key={keyIndex}
+                onPointerDown={e => e.preventDefault()}
                 onClick={() => handleKeyPress(key)}
                 className="bg-gray-700 hover:bg-gray-600 transition-colors rounded px-3 py-2 text-sm"
               >
