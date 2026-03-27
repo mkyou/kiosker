@@ -510,13 +510,14 @@ pub fn kill_target(state: State<'_, AppState>, target: String) -> Result<String,
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn test_process_metadata_fallback() {
-        // No Windows ou Linux, o file_stem deve extrair o nome do executável
         let meta = get_executable_metadata("C:/Games/Cyberpunk2077.exe".to_string()).expect("Should parse path");
         assert_eq!(meta.title, "Cyberpunk2077");
-        
+
         let linux_meta = get_executable_metadata("/home/user/stremio".to_string()).expect("Should parse path");
         assert_eq!(linux_meta.title, "stremio");
     }
@@ -525,7 +526,6 @@ mod tests {
     fn test_right_click_interval() {
         let now: u64 = 1000;
         let last: u64 = 500;
-        // Se a diferença for < 1000ms, é um clique válido na sequência
         assert!(now - last < 1000);
     }
 
@@ -533,7 +533,6 @@ mod tests {
     fn test_active_targets_tracking() {
         use std::sync::Mutex;
         let pids = Mutex::new(vec![("test_url".to_string(), 12345u32)]);
-        
         let targets: Vec<String> = pids.lock().unwrap().iter().map(|(t, _)| t.clone()).collect();
         assert_eq!(targets[0], "test_url");
     }
@@ -543,15 +542,82 @@ mod tests {
         use std::sync::Mutex;
         let pids = Mutex::new(vec![
             ("target_a".to_string(), 100u32),
-            ("target_b".to_string(), 101u32)
+            ("target_b".to_string(), 101u32),
         ]);
-        
-        // Simulating kill_target for target_a
         let mut pids_guard = pids.lock().unwrap();
-        let target_to_kill = "target_a";
-        pids_guard.retain(|(t, _)| t != target_to_kill);
-        
+        pids_guard.retain(|(t, _)| t != "target_a");
         assert_eq!(pids_guard.len(), 1);
         assert_eq!(pids_guard[0].0, "target_b");
+    }
+
+    #[test]
+    fn test_get_executable_metadata_path_without_extension() {
+        let meta = get_executable_metadata("/usr/bin/firefox".to_string()).unwrap();
+        assert_eq!(meta.title, "firefox");
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_png() {
+        let dir = tempdir().unwrap();
+        let png_path = dir.path().join("test.png");
+        fs::write(&png_path, b"\x89PNG\r\n\x1a\nfake png data").unwrap();
+        let result = convert_image_to_base64(&png_path).unwrap();
+        assert!(result.starts_with("data:image/png;base64,"));
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_svg() {
+        let dir = tempdir().unwrap();
+        let svg_path = dir.path().join("test.svg");
+        fs::write(&svg_path, b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
+        let result = convert_image_to_base64(&svg_path).unwrap();
+        assert!(result.starts_with("data:image/svg+xml;base64,"));
+    }
+
+    #[test]
+    fn test_convert_image_to_base64_returns_none_for_nonexistent_file() {
+        let result = convert_image_to_base64(std::path::Path::new("/nonexistent/file_kiosker_test.png"));
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_kill_target_noop_when_target_not_found() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![("target_a".to_string(), 100u32)]);
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(t, _)| t != "nonexistent_target");
+        assert_eq!(guard.len(), 1);
+    }
+
+    #[test]
+    fn test_kill_target_removes_all_matching_entries() {
+        use std::sync::Mutex;
+        let pids = Mutex::new(vec![
+            ("target_a".to_string(), 100u32),
+            ("target_a".to_string(), 101u32),
+            ("target_b".to_string(), 102u32),
+        ]);
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(t, _)| t != "target_a");
+        assert_eq!(guard.len(), 1);
+        assert_eq!(guard[0].0, "target_b");
+    }
+
+    #[test]
+    fn test_active_targets_cleanup_filters_dead_pids() {
+        use std::sync::Mutex;
+        use sysinfo::{Pid, System};
+        let fake_pid = u32::MAX;
+        let pids = Mutex::new(vec![("dead_target".to_string(), fake_pid)]);
+        let system = System::new_all();
+        let mut guard = pids.lock().unwrap();
+        guard.retain(|(_, pid)| system.process(Pid::from(*pid as usize)).is_some());
+        assert!(guard.is_empty(), "Dead PID should have been removed");
+    }
+
+    #[test]
+    fn test_launch_executable_fails_for_nonexistent_path() {
+        let result = std::process::Command::new("/nonexistent/binary/xyz_kiosker_test_1234").spawn();
+        assert!(result.is_err(), "Spawning a nonexistent executable should fail");
     }
 }

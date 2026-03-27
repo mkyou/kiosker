@@ -11,7 +11,7 @@
  *  - Changes language and translates elements
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, fireEvent, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { render } from './renderWithProviders';
 import { Settings } from '../pages/Settings';
@@ -195,6 +195,43 @@ describe('Settings – export and import', () => {
             expect(mockInvoke).toHaveBeenCalledWith('import_database');
             expect(screen.getByText('imported OK')).toBeInTheDocument();
         });
+    });
+});
+
+describe('Settings – visual highlights', () => {
+    it('highlights the selected browser button with neon-glow class', async () => {
+        render(<Settings />);
+        // Mock returns 'firefox' as preferred_browser
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /firefox/i })).toHaveClass('neon-glow-purple');
+            expect(screen.getByRole('button', { name: /chrome/i })).not.toHaveClass('neon-glow-purple');
+        });
+    });
+
+    it('highlights the selected language button with neon-glow class', async () => {
+        render(<Settings />);
+        // Mock returns 'pt' as language
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /^pt$/i })).toHaveClass('neon-glow-purple');
+            expect(screen.getByRole('button', { name: /^en$/i })).not.toHaveClass('neon-glow-purple');
+        });
+    });
+});
+
+describe('Settings – toast lifecycle', () => {
+    it('toast disappears after 3 seconds', async () => {
+        // shouldAdvanceTime lets waitFor work while still allowing manual timer control
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        render(<Settings />);
+
+        await waitFor(() => screen.getByText(/Exportar biblioteca/i));
+        fireEvent.click(screen.getByText(/Exportar biblioteca/i).closest('button')!);
+        await waitFor(() => expect(screen.getByText('exported OK')).toBeInTheDocument());
+
+        await act(async () => { vi.advanceTimersByTime(3000); });
+
+        expect(screen.queryByText('exported OK')).not.toBeInTheDocument();
+        vi.useRealTimers();
     });
 });
 

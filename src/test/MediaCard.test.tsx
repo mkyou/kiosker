@@ -240,4 +240,98 @@ describe('MediaCard – inline edit mode', () => {
         });
         expect(mockInvoke).not.toHaveBeenCalledWith('update_item', expect.anything());
     });
+
+    it('empty title cancels edit without calling invoke("update_item")', async () => {
+        const user = userEvent.setup();
+        render(<MediaCard {...baseProps} />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => screen.getByText(/editar/i));
+        await user.click(screen.getByText(/editar/i));
+        const input = await screen.findByRole('textbox');
+        await user.clear(input);
+        await user.keyboard('{Enter}');
+        await waitFor(() => {
+            expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        });
+        expect(mockInvoke).not.toHaveBeenCalledWith('update_item', expect.anything());
+    });
+
+    it('same title as original cancels edit without calling invoke("update_item")', async () => {
+        const user = userEvent.setup();
+        render(<MediaCard {...baseProps} title="Netflix" />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => screen.getByText(/editar/i));
+        await user.click(screen.getByText(/editar/i));
+        // Press Enter without changing the title
+        await user.keyboard('{Enter}');
+        await waitFor(() => {
+            expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+        });
+        expect(mockInvoke).not.toHaveBeenCalledWith('update_item', expect.anything());
+    });
+
+    it('blur on the edit input saves the new title', async () => {
+        const onRefresh = vi.fn();
+        const user = userEvent.setup();
+        render(<MediaCard {...baseProps} id={1} title="Netflix" onRefresh={onRefresh} />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => screen.getByText(/editar/i));
+        await user.click(screen.getByText(/editar/i));
+        const input = await screen.findByRole('textbox');
+        await user.clear(input);
+        await user.type(input, 'Netflix 4K');
+        fireEvent.blur(input);
+        await waitFor(() => {
+            expect(mockInvoke).toHaveBeenCalledWith('update_item', { id: 1, title: 'Netflix 4K' });
+        });
+    });
+});
+
+describe('MediaCard – additional interactions', () => {
+    it('calls invoke("launch_executable") with path when an exe card is clicked', async () => {
+        const user = userEvent.setup();
+        render(<MediaCard {...baseProps} item_type="exe" target_path={'C:\\Games\\app.exe'} />);
+        await user.click(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => {
+            expect(mockInvoke).toHaveBeenCalledWith('launch_executable', { path: 'C:\\Games\\app.exe' });
+        });
+    });
+
+    it('Shift+F10 opens the context menu on the focused button', async () => {
+        render(<MediaCard {...baseProps} />);
+        const button = screen.getByRole('button', { name: /netflix/i });
+        button.focus();
+        fireEvent.keyDown(button, { key: 'F10', shiftKey: true });
+        await waitFor(() => {
+            expect(screen.getByRole('menu')).toBeInTheDocument();
+        });
+    });
+
+    it('context menu closes on blur when focus leaves the card', async () => {
+        const { container } = render(<MediaCard {...baseProps} />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => screen.getByRole('menu'));
+        // Fire blur on the outer container with relatedTarget outside
+        const outerDiv = container.firstChild as HTMLElement;
+        fireEvent.blur(outerDiv, { relatedTarget: document.body });
+        await waitFor(() => {
+            expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        });
+    });
+
+    it('shows ★ icon in favorite button when is_favorite is true', async () => {
+        render(<MediaCard {...baseProps} is_favorite={true} />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => {
+            expect(screen.getByText('★')).toBeInTheDocument();
+        });
+    });
+
+    it('shows ☆ icon in favorite button when is_favorite is false', async () => {
+        render(<MediaCard {...baseProps} is_favorite={false} />);
+        fireEvent.contextMenu(screen.getByRole('button', { name: /netflix/i }));
+        await waitFor(() => {
+            expect(screen.getByText('☆')).toBeInTheDocument();
+        });
+    });
 });

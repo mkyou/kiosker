@@ -9,7 +9,7 @@
  *  - Opens SystemAppPicker modal on click
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { render } from './renderWithProviders';
 import { HomeGrid, KioskerItem } from '../pages/HomeGrid';
@@ -69,21 +69,97 @@ describe('HomeGrid – modals', () => {
     it('opens AddEntryForm when "Adicionar Site" is clicked', async () => {
         const user = userEvent.setup();
         render(<HomeGrid items={mockItems} loading={false} onRefresh={vi.fn()} />);
-        
+
         const addWebCard = screen.getAllByRole('button', { name: /Adicionar Site/i })[0];
         await user.click(addWebCard);
-        
+
         expect(screen.getByRole('textbox')).toBeInTheDocument(); // Textarea inside AddEntryForm
     });
 
     it('opens SystemAppPicker when "Adicionar App" is clicked', async () => {
         const user = userEvent.setup();
         render(<HomeGrid items={mockItems} loading={false} onRefresh={vi.fn()} />);
-        
+
         // Note: the component renders an action card with text "App Local"
         const addAppCard = screen.getByRole('button', { name: /App Local/i });
         await user.click(addAppCard);
-        
+
         expect(screen.getByPlaceholderText(/buscar/i)).toBeInTheDocument();
+    });
+});
+
+describe('HomeGrid – sections', () => {
+    it('does not render "Favoritos" section when no items are favorites', () => {
+        const noFavItems = mockItems.map(i => ({ ...i, is_favorite: false }));
+        render(<HomeGrid items={noFavItems} loading={false} onRefresh={vi.fn()} />);
+        expect(screen.queryByText(/Favoritos/i)).not.toBeInTheDocument();
+    });
+
+    it('renders web items in alphabetical order', () => {
+        const unordered: KioskerItem[] = [
+            { id: 1, title: 'Zoom',    item_type: 'web', target_path: 'https://zoom.us',    is_favorite: false },
+            { id: 2, title: 'Amazon',  item_type: 'web', target_path: 'https://amazon.com', is_favorite: false },
+            { id: 3, title: 'Netflix', item_type: 'web', target_path: 'https://netflix.com', is_favorite: false },
+        ];
+        render(<HomeGrid items={unordered} loading={false} onRefresh={vi.fn()} />);
+
+        const amazon  = screen.getByRole('button', { name: /amazon/i });
+        const netflix = screen.getByRole('button', { name: /netflix/i });
+        const zoom    = screen.getByRole('button', { name: /zoom/i });
+
+        // Amazon precedes Netflix precedes Zoom in DOM order
+        expect(amazon.compareDocumentPosition(netflix) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(netflix.compareDocumentPosition(zoom) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+});
+
+describe('HomeGrid – delete flow', () => {
+    it('opens delete confirmation modal when delete is requested via context menu', async () => {
+        const user = userEvent.setup();
+        render(<HomeGrid items={mockItems} loading={false} onRefresh={vi.fn()} />);
+
+        // Open context menu on first Netflix card
+        fireEvent.contextMenu(screen.getAllByRole('button', { name: /netflix/i })[0]);
+        await waitFor(() => screen.getByText(/excluir da biblioteca/i));
+        await user.click(screen.getByText(/excluir da biblioteca/i));
+
+        await waitFor(() => {
+            expect(screen.getByText('"Netflix"')).toBeInTheDocument();
+        });
+    });
+
+    it('confirm delete calls invoke("delete_item") and closes the modal', async () => {
+        const user = userEvent.setup();
+        const onRefresh = vi.fn();
+        render(<HomeGrid items={mockItems} loading={false} onRefresh={onRefresh} />);
+
+        fireEvent.contextMenu(screen.getAllByRole('button', { name: /netflix/i })[0]);
+        await waitFor(() => screen.getByText(/excluir da biblioteca/i));
+        await user.click(screen.getByText(/excluir da biblioteca/i));
+        await waitFor(() => screen.getByText('"Netflix"'));
+
+        await user.click(screen.getByRole('button', { name: /confirmar/i }));
+
+        await waitFor(() => {
+            expect(mockInvoke).toHaveBeenCalledWith('delete_item', { id: 1 });
+            expect(onRefresh).toHaveBeenCalled();
+        });
+    });
+
+    it('cancel delete does NOT call invoke("delete_item") and closes the modal', async () => {
+        const user = userEvent.setup();
+        render(<HomeGrid items={mockItems} loading={false} onRefresh={vi.fn()} />);
+
+        fireEvent.contextMenu(screen.getAllByRole('button', { name: /netflix/i })[0]);
+        await waitFor(() => screen.getByText(/excluir da biblioteca/i));
+        await user.click(screen.getByText(/excluir da biblioteca/i));
+        await waitFor(() => screen.getByText('"Netflix"'));
+
+        await user.click(screen.getByRole('button', { name: /cancelar/i }));
+
+        await waitFor(() => {
+            expect(screen.queryByText('"Netflix"')).not.toBeInTheDocument();
+        });
+        expect(mockInvoke).not.toHaveBeenCalledWith('delete_item', expect.anything());
     });
 });

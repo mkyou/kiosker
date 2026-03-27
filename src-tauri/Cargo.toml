@@ -40,3 +40,4 @@ winapi = { version = "0.3.9", features = ["shellapi", "winuser", "libloaderapi",
 
 [dev-dependencies]
 tempfile = "3.10"
+mockito = "1"
