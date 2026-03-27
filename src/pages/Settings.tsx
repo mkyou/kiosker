@@ -90,11 +90,11 @@ export function Settings() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mt-auto">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-6 mt-auto place-items-start">
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("firefox")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "firefox"
                                     ? "bg-dracula-purple/10 border-dracula-purple/50 text-dracula-purple neon-glow-purple"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -116,7 +116,7 @@ export function Settings() {
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("chrome")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "chrome"
                                     ? "bg-dracula-cyan/10 border-dracula-cyan/50 text-dracula-cyan shadow-[0_0_30px_rgba(139,233,253,0.3)]"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -138,7 +138,7 @@ export function Settings() {
                         <button
                             disabled={migrating}
                             onClick={() => handleBrowserChange("edge")}
-                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn ${
+                            className={`flex flex-col gap-8 p-8 squircle-lg border transition-all relative overflow-hidden group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                 preferredBrowser === "edge"
                                     ? "bg-dracula-green/10 border-dracula-green/50 text-dracula-green shadow-[0_0_30px_rgba(80,250,123,0.3)]"
                                     : "bg-white/5 border-white/5 text-dracula-fg/30 hover:border-white/10 hover:bg-white/[0.08]"
@@ -171,7 +171,7 @@ export function Settings() {
 
                             <button
                                 onClick={toggleAutoStart}
-                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full md:w-auto md:min-w-[280px] justify-between group shrink-0 ${
+                                className={`flex items-center gap-6 p-6 md:p-8 squircle-md border transition-all w-full md:w-auto md:min-w-[280px] justify-between group shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                     autoStart ? 'bg-dracula-green/10 border-dracula-green/40 text-dracula-green neon-glow-green' : 'bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/10'
                                 }`}
                             >
@@ -188,10 +188,10 @@ export function Settings() {
                         <h3 className="text-3xl font-display font-black mb-3">{t('settings.data.title')}</h3>
                         <p className="text-dracula-fg/40 text-base mb-12 font-sans">{t('settings.data.desc')}</p>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 place-items-start">
                             <button 
                                 onClick={handleExport}
-                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-cyan/10 text-dracula-cyan rounded-xl group-hover:scale-110 transition-transform"><Download size={20}/></div>
@@ -201,7 +201,7 @@ export function Settings() {
                             </button>
                             <button 
                                 onClick={handleImport}
-                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500"
+                                className="flex items-center justify-between p-8 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/10 squircle-md text-dracula-fg/70 transition-all font-black group transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50"
                             >
                                 <div className="flex items-center gap-4">
                                     <div className="p-3 bg-dracula-purple/10 text-dracula-purple rounded-xl group-hover:scale-110 transition-transform"><Upload size={20}/></div>
@@ -310,12 +310,12 @@ export function Settings() {
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 flex-shrink-0">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 flex-shrink-0 place-items-start">
                             {(['pt', 'en', 'es', 'zh'] as Language[]).map((lang) => (
                                 <button
                                     key={lang}
                                     onClick={() => setLanguage(lang)}
-                                    className={`flex flex-col items-center justify-center min-w-[140px] p-6 squircle-lg border transition-all duration-500 scale-100 active:scale-95 ${
+                                    className={`flex flex-col items-center justify-center min-w-[140px] p-6 squircle-lg border transition-all duration-500 scale-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-dracula-purple/50 ${
                                         currentLang === lang
                                             ? "bg-dracula-purple/20 border-dracula-purple/50 text-dracula-purple font-black shadow-2xl neon-glow-purple"
                                             : "bg-white/5 border-white/5 text-dracula-fg/20 hover:border-white/20 hover:text-dracula-fg hover:bg-white/10"

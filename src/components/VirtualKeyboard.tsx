@@ -1,82 +1,93 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface VirtualKeyboardProps {
   onKeyPress: (key: string) => void;
   onClose: () => void;
 }
 
-const keyLayout = [
-  ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'],
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '\u2190'],
-  ['shift', 'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.'],
-  [' ', 'Enter', 'Esc']
+type Key = { key: string; label: string; cls?: string } | string;
+
+const ROWS: Key[][] = [
+  ['1','2','3','4','5','6','7','8','9','0',
+    { key: 'Backspace', label: '⌫', cls: 'min-w-[3.5rem]' }],
+  ['q','w','e','r','t','y','u','i','o','p'],
+  ['a','s','d','f','g','h','j','k','l'],
+  [
+    { key: 'Shift', label: 'Shift', cls: 'min-w-[3.5rem]' },
+    'z','x','c','v','b','n','m',',','.',
+    { key: '?', label: '?' },
+  ],
+  [
+    { key: ' ', label: ' ', cls: 'flex-1 max-w-xs' },
+    { key: 'Enter', label: 'Enter', cls: 'min-w-[5rem] bg-dracula-green/10 border-dracula-green/30 text-dracula-green hover:bg-dracula-green/20 focus:bg-dracula-green/20' },
+    { key: 'Escape', label: 'Esc', cls: 'min-w-[3.5rem] bg-dracula-red/10 border-dracula-red/30 text-dracula-red hover:bg-dracula-red/20 focus:bg-dracula-red/20' },
+  ],
 ];
 
+function resolveKey(k: Key): { key: string; label: string; cls?: string } {
+  return typeof k === 'string' ? { key: k, label: k } : k;
+}
+
 export function VirtualKeyboard({ onKeyPress, onClose }: VirtualKeyboardProps) {
-  const [isShiftActive, setIsShiftActive] = useState(false);
+  const [shift, setShift] = useState(false);
 
-  const handleKeyPress = (key: string) => {
-    if (key === 'shift') {
-      setIsShiftActive(!isShiftActive);
-      return;
-    }
-
-    if (key === '\u2190') {
-      onKeyPress('Backspace');
-      return;
-    }
-
-    if (key === 'Enter') {
-      onKeyPress('Enter');
-      return;
-    }
-
-    if (key === 'Esc') {
-      onClose();
-      return;
-    }
-
-    if (key === ' ') {
-      onKeyPress(' ');
-      return;
-    }
-
-    const char = isShiftActive ? key.toUpperCase() : key.toLowerCase();
+  const handleKey = (key: string) => {
+    if (key === 'Shift') { setShift(v => !v); return; }
+    if (key === 'Backspace') { onKeyPress('Backspace'); return; }
+    if (key === 'Enter') { onKeyPress('Enter'); return; }
+    if (key === 'Escape') { onClose(); return; }
+    const char = shift && key.length === 1 ? key.toUpperCase() : key;
     onKeyPress(char);
+    if (shift) setShift(false);
   };
 
-  return (
-    <div className="fixed bottom-0 left-0 right-0 bg-gray-800 text-white z-300 p-4 rounded-t-2xl shadow-2xl">
-      <div className="flex justify-between items-center mb-4">
-        <div className="text-lg font-bold">Teclado Virtual</div>
-        <button
-          onClick={onClose}
-          className="text-red-400 hover:text-red-300 transition-colors"
-        >
-          Fechar
-        </button>
-      </div>
+  const baseKey = "flex items-center justify-center rounded-xl border text-sm font-mono font-bold select-none cursor-pointer focus:outline-none transition-colors duration-75 px-2 py-3 min-w-[2.5rem]";
+  const normalKey = `${baseKey} bg-white/5 border-white/10 text-dracula-fg hover:bg-white/15 focus:bg-dracula-purple/20 focus:border-dracula-purple/40`;
+  const shiftActive = `${baseKey} bg-dracula-purple/30 border-dracula-purple/60 text-dracula-purple`;
 
-      <div className="grid grid-cols-10 gap-2">
-        {keyLayout.map((row, rowIndex) => (
-          <div key={rowIndex} className="flex justify-between">
-            {row.map((key, keyIndex) => (
-              <button
-                key={keyIndex}
-                onPointerDown={e => e.preventDefault()}
-                onClick={() => handleKeyPress(key)}
-                className="bg-gray-700 hover:bg-gray-600 transition-colors rounded px-3 py-2 text-sm"
-              >
-                {key === 'shift' ? 'Shift' :
-                 key === '\u2190' ? '⌫' :
-                 key === 'Enter' ? 'Enter' :
-                 key === 'Esc' ? 'Esc' :
-                 key}
-              </button>
-            ))}
-          </div>
-        ))}
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[500] bg-dracula-bg/97 backdrop-blur-2xl border-t border-white/10 shadow-2xl">
+      <div className="max-w-3xl mx-auto px-4 pt-3 pb-5">
+
+        <div className="flex justify-between items-center mb-3">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-dracula-fg/30">
+            Teclado Virtual
+          </span>
+          <button
+            onPointerDown={e => e.preventDefault()}
+            onClick={onClose}
+            className="text-[10px] font-black uppercase tracking-widest text-dracula-fg/30 hover:text-dracula-red transition-colors focus:outline-none"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          {ROWS.map((row, ri) => (
+            <div key={ri} className="flex justify-center gap-1.5">
+              {row.map((k) => {
+                const { key, label, cls } = resolveKey(k);
+                const isShiftKey = key === 'Shift';
+                const keyClass = isShiftKey
+                  ? (shift ? shiftActive : normalKey)
+                  : (cls?.includes('bg-') ? `${baseKey} ${cls}` : `${normalKey} ${cls ?? ''}`);
+
+                return (
+                  <button
+                    key={key + ri}
+                    tabIndex={0}
+                    onPointerDown={e => e.preventDefault()}
+                    onClick={() => handleKey(key)}
+                    className={keyClass.trim()}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
       </div>
     </div>
   );

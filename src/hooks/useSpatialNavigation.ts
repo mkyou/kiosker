@@ -9,6 +9,16 @@ export function useSpatialNavigation() {
     const leftClickCount = useRef<number>(0);
     const lastClickTarget = useRef<EventTarget | null>(null);
 
+    const isPointerBlocked = (el: HTMLElement): boolean => {
+        let node: Element | null = el.parentElement;
+        while (node && node !== document.body) {
+            if (node.classList.contains('pointer-events-auto')) return false;
+            if (node.classList.contains('pointer-events-none')) return true;
+            node = node.parentElement;
+        }
+        return false;
+    };
+
     const moveFocus = useCallback((direction: Direction) => {
         const activeElement = document.activeElement as HTMLElement | null;
         const focusableElements = Array.from(
@@ -17,8 +27,18 @@ export function useSpatialNavigation() {
             )
         ).filter(el => {
             const rect = el.getBoundingClientRect();
-            const isVisible = rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== "hidden";
+            const style = getComputedStyle(el);
+            const isVisible = rect.width > 0 && rect.height > 0
+                && style.visibility !== "hidden"
+                && style.pointerEvents !== "none";
             if (!isVisible) return false;
+
+            // Exclude elements whose section is deactivated via pointer-events-none
+            // (but allow elements that have an explicit pointer-events-auto closer ancestor)
+            if (isPointerBlocked(el)) return false;
+
+            // Exclude elements inside containers marked as nav-excluded (e.g., Toolbar)
+            if (el.closest('[data-nav-exclude]')) return false;
 
             // If we are currently in a menu, only allow focusing other things in the SAME menu
             if (activeElement) {
@@ -133,31 +153,41 @@ export function useSpatialNavigation() {
         }
 
         if (bestMatch) {
-            bestMatch.focus();
+            bestMatch.focus({ preventScroll: false });
+            bestMatch.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
         }
     }, []);
 
     useEffect(() => {
         // Keyboard Listener
         const handleKeyDown = (e: KeyboardEvent) => {
+            const isTyping =
+                document.activeElement instanceof HTMLInputElement ||
+                document.activeElement instanceof HTMLTextAreaElement;
+
             switch (e.key) {
                 case "ArrowUp":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("up");
                     break;
                 case "ArrowDown":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("down");
                     break;
                 case "ArrowLeft":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("left");
                     break;
                 case "ArrowRight":
+                    if (isTyping) return;
                     e.preventDefault();
                     moveFocus("right");
                     break;
                 case "Enter":
+                    if (isTyping) return;
                     e.preventDefault();
                     if (document.activeElement instanceof HTMLElement) {
                         document.activeElement.click();

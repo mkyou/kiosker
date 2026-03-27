@@ -23,6 +23,7 @@ pub fn get_kiosker_profile_dir(app_handle: &AppHandle) -> PathBuf {
     profile_dir
 }
 
+#[allow(dead_code)]
 pub fn find_default_browser_profile() -> Option<(PathBuf, &'static str)> {
     // 1. Prioritize Firefox (User Preference - Privacy)
     #[cfg(target_os = "windows")]

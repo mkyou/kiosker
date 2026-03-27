@@ -183,7 +183,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
                                 <span className="opacity-50 text-xl">#</span> {t('home.web')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10 place-items-start">
                                 {webItems.map((item) => (
                                     <MediaCard
                                         key={`web-${item.id}`}
@@ -219,7 +219,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
                             <h3 className="font-display font-black text-2xl tracking-tighter text-dracula-fg/80 mb-6 flex items-center gap-3">
                                 <span className="opacity-50 text-xl">#</span> {t('home.apps')}
                             </h3>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 2xl:grid-cols-5 gap-10 place-items-start">
                                 {appItems.map((item) => (
                                     <MediaCard
                                         key={`app-${item.id}`}

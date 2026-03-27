@@ -52,7 +52,7 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
     ];
 
     return (
-        <div className="fixed top-0 left-0 right-0 h-20 px-8 md:px-12 z-[200] pointer-events-none select-none">
+        <header className="fixed top-0 left-0 right-0 h-20 px-8 md:px-12 z-[200] pointer-events-none select-none">
             {/* Ambient Background Gradient for the bar */}
             <div className="absolute inset-0 bg-gradient-to-b from-[#383448] via-[#383448]/80 to-transparent h-32" />
             
@@ -99,7 +99,7 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
                 </nav>
                 
                 {/* Status & Clock - Flexible Width */}
-                <div className="flex-1 flex items-center justify-end gap-4 md:gap-10 relative z-10 pointer-events-auto overflow-hidden">
+                <div data-nav-exclude className="flex-1 flex items-center justify-end gap-4 md:gap-10 relative z-10 pointer-events-auto overflow-hidden">
                     <div className="flex items-center gap-4 md:gap-6 text-dracula-fg/30">
                         <button onClick={handleWifiClick} className="flex items-center gap-2 hover:text-dracula-cyan transition-colors" title="Abrir configurações de rede">
                             <Wifi size={20} strokeWidth={2.5} className={sysStatus?.wifi_connected ? "text-dracula-green/60" : "text-dracula-pink/60"} />
@@ -119,6 +119,6 @@ export function Toolbar({ activeTab, setActiveTab }: ToolbarProps) {
                     </div>
                 </div>
             </div>
-        </div>
+        </header>
     );
 }

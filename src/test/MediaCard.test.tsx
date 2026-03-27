@@ -99,9 +99,9 @@ describe('MediaCard – context menu', () => {
         await waitFor(() => {
             const menu = screen.getByRole('menu');
             expect(menu).toBeInTheDocument();
-            // Since our formula is x = e.clientX, y = e.clientY (with some boundary checks),
-            // and 500/400 is safely within innerWidth/innerHeight in most environments:
-            expect(menu).toHaveStyle({ left: '500px', top: '400px' });
+            // jsdom viewport 1024×768: y(400)+MENU_H(360)=760 > 758 → flips above: top=40
+            // x(500)+MENU_W(176)=676 < 1014 → no flip: left=500
+            expect(menu).toHaveStyle({ left: '500px', top: '40px' });
         });
     });
 

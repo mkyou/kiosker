@@ -38,7 +38,7 @@ function setupDOM(elements: ElemDef[]) {
         } as DOMRect));
     });
 
-    vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block' } as any);
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block', pointerEvents: 'auto' } as any);
 }
 
 function pressKey(key: string, opts: KeyboardEventInit = {}) {
@@ -78,6 +78,7 @@ describe('useSpatialNavigation – Gamepad Axes', () => {
         vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({
             visibility: 'visible',
             display: 'block',
+            pointerEvents: 'auto',
         } as any));
     });
 
@@ -170,6 +171,39 @@ describe('useSpatialNavigation – Keyboard Directional Navigation', () => {
         center.addEventListener('contextmenu', ctxSpy);
         pressKey('F10', { shiftKey: true });
         expect(ctxSpy).toHaveBeenCalled();
+    });
+
+    it('ArrowDown does NOT move focus when an input is active', () => {
+        document.body.insertAdjacentHTML('beforeend', '<input id="text-input" type="text" />');
+        const input = document.getElementById('text-input') as HTMLInputElement;
+        input.focus();
+        renderHook(() => useSpatialNavigation());
+        const before = document.activeElement;
+        pressKey('ArrowDown');
+        expect(document.activeElement).toBe(before);
+    });
+
+    it('Enter does NOT fire .click() when an input is active', () => {
+        document.body.insertAdjacentHTML('beforeend', '<input id="text-input2" type="text" />');
+        const input = document.getElementById('text-input2') as HTMLInputElement;
+        const clickSpy = vi.fn();
+        input.addEventListener('click', clickSpy);
+        input.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('Enter');
+        expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('ArrowDown does NOT move focus when a textarea is active', () => {
+        const center = document.getElementById('center')!;
+        document.body.insertAdjacentHTML('beforeend', '<textarea id="text-area"></textarea>');
+        const ta = document.getElementById('text-area') as HTMLTextAreaElement;
+        ta.getBoundingClientRect = vi.fn(() => ({ left: 0, top: 200, width: 200, height: 100, right: 200, bottom: 300, x: 0, y: 200 } as DOMRect));
+        ta.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowDown');
+        expect(document.activeElement).toBe(ta);
+        expect(document.activeElement).not.toBe(center);
     });
 });
 
@@ -297,7 +331,7 @@ describe('useSpatialNavigation – Initial Focus', () => {
         document.getElementById('card-1')!.getBoundingClientRect = vi.fn(() => ({
             left: 10, top: 120, right: 60, bottom: 170, width: 50, height: 50, x: 10, y: 120,
         } as DOMRect));
-        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block' } as any);
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block', pointerEvents: 'auto' } as any);
 
         renderHook(() => useSpatialNavigation());
         pressKey('ArrowDown');
@@ -319,7 +353,7 @@ describe('useSpatialNavigation – Initial Focus', () => {
                 width: 50, height: 30, x: 10 + i * 70, y: 10,
             } as DOMRect));
         });
-        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block' } as any);
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block', pointerEvents: 'auto' } as any);
 
         renderHook(() => useSpatialNavigation());
         pressKey('ArrowRight');
@@ -460,6 +494,59 @@ describe('useSpatialNavigation – Edge Cases', () => {
 
         // Should focus menu-b (inside menu), NOT outside
         expect(document.activeElement?.id).toBe('menu-b');
+    });
+
+    it('elements with pointer-events: none are excluded from navigation (e.g. hidden sections)', () => {
+        document.body.innerHTML = `
+            <div tabindex="0" id="visible" style="position:absolute;left:10px;top:100px;width:50px;height:50px;"></div>
+            <div tabindex="0" id="hidden-via-pe" style="position:absolute;left:200px;top:100px;width:50px;height:50px;"></div>
+        `;
+        document.getElementById('visible')!.getBoundingClientRect = vi.fn(() => ({
+            left: 10, top: 100, right: 60, bottom: 150, width: 50, height: 50, x: 10, y: 100,
+        } as DOMRect));
+        document.getElementById('hidden-via-pe')!.getBoundingClientRect = vi.fn(() => ({
+            left: 200, top: 100, right: 250, bottom: 150, width: 50, height: 50, x: 200, y: 100,
+        } as DOMRect));
+        vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => {
+            if ((el as HTMLElement).id === 'hidden-via-pe') {
+                return { visibility: 'visible', display: 'block', pointerEvents: 'none' } as any;
+            }
+            return { visibility: 'visible', display: 'block', pointerEvents: 'auto' } as any;
+        });
+
+        document.getElementById('visible')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowRight');
+
+        // Should NOT focus hidden-via-pe even though it is to the right
+        expect(document.activeElement?.id).toBe('visible');
+    });
+
+    it('elements inside [data-nav-exclude] containers are excluded from navigation (e.g. Toolbar)', () => {
+        document.body.innerHTML = `
+            <header data-nav-exclude>
+                <button id="toolbar-btn" style="position:absolute;left:900px;top:10px;width:50px;height:30px;"></button>
+            </header>
+            <div tabindex="0" id="content-card" style="position:absolute;left:10px;top:100px;width:50px;height:50px;"></div>
+            <div tabindex="0" id="content-card-2" style="position:absolute;left:200px;top:100px;width:50px;height:50px;"></div>
+        `;
+        document.getElementById('toolbar-btn')!.getBoundingClientRect = vi.fn(() => ({
+            left: 900, top: 10, right: 950, bottom: 40, width: 50, height: 30, x: 900, y: 10,
+        } as DOMRect));
+        document.getElementById('content-card')!.getBoundingClientRect = vi.fn(() => ({
+            left: 10, top: 100, right: 60, bottom: 150, width: 50, height: 50, x: 10, y: 100,
+        } as DOMRect));
+        document.getElementById('content-card-2')!.getBoundingClientRect = vi.fn(() => ({
+            left: 200, top: 100, right: 250, bottom: 150, width: 50, height: 50, x: 200, y: 100,
+        } as DOMRect));
+        vi.spyOn(window, 'getComputedStyle').mockReturnValue({ visibility: 'visible', display: 'block', pointerEvents: 'auto' } as any);
+
+        document.getElementById('content-card')!.focus();
+        renderHook(() => useSpatialNavigation());
+        pressKey('ArrowRight');
+
+        // Should move to content-card-2, NOT the toolbar-btn (which is to the right but nav-excluded)
+        expect(document.activeElement?.id).toBe('content-card-2');
     });
 
     it('cleanup removes event listeners and cancels animation frame on unmount', () => {
