@@ -67,3 +67,32 @@ jobs:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
           retention-days: 7
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            Build automático — commit ${{ github.sha }}.
+
+            | Sistema | Arquivo |
+            |---------|---------|
+            | Windows | `*-setup.exe` (instalador NSIS) ou `*.msi` |
+            | Linux   | `*.deb` (Debian/Ubuntu) ou `*.AppImage` (portátil) |
+          files: artifacts/**
+          make_latest: true

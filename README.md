@@ -15,7 +15,7 @@ O **Kiosker** é uma aplicação desktop que transforma seu computador em um hub
 
 ## Download
 
-Vá até a aba **[Actions](../../actions)** deste repositório, clique no build mais recente e baixe o artefato correspondente ao seu sistema:
+Vá até a aba **[Releases](../../releases/latest)** deste repositório e baixe o arquivo correspondente ao seu sistema:
 
 | Sistema | Arquivo | Descrição |
 |---------|---------|-----------|
