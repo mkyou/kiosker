@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { MediaCard } from "../components/MediaCard";
@@ -23,29 +23,15 @@ interface HomeGridProps {
     items: KioskerItem[];
     loading: boolean;
     onRefresh: () => void;
+    activeTargets?: string[];
+    onRefreshTargets?: () => void;
 }
 
-export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
+export function HomeGrid({ items, loading, onRefresh, activeTargets = [], onRefreshTargets = () => {} }: HomeGridProps) {
     const { t } = useTranslation();
     const [showAddWeb, setShowAddWeb] = useState(false);
     const [showSystemAppPicker, setShowSystemAppPicker] = useState(false);
-    const [activeTargets, setActiveTargets] = useState<string[]>([]);
     const [itemToDelete, setItemToDelete] = useState<KioskerItem | null>(null);
-
-    const refreshActiveTargets = async () => {
-        try {
-            const targets = await invoke<string[]>("get_active_targets");
-            setActiveTargets(targets);
-        } catch (e) {
-            console.error("Failed to poll active targets", e);
-        }
-    };
-
-    useEffect(() => {
-        refreshActiveTargets();
-        const interval = setInterval(refreshActiveTargets, 3000);
-        return () => clearInterval(interval);
-    }, []);
 
     const handleSystemAppSelect = async (app: { name: string; exec: string; icon?: string }) => {
         try {
@@ -79,7 +65,7 @@ export function HomeGrid({ items, loading, onRefresh }: HomeGridProps) {
     const handleKill = async (target: string) => {
         try {
             await invoke("kill_target", { target });
-            refreshActiveTargets();
+            onRefreshTargets();
         } catch (e) {
             console.error("Kill failed:", e);
         }

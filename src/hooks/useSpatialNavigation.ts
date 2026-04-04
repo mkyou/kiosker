@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 
 type Direction = "up" | "down" | "left" | "right";
 
-export function useSpatialNavigation() {
+export function useSpatialNavigation(hasRunningApps: boolean = false) {
     const gamepadRef = useRef<number | null>(null);
     const lastActionTime = useRef<number>(0);
     const lastLeftClickTime = useRef<number>(0);
@@ -11,6 +11,7 @@ export function useSpatialNavigation() {
     const l3r3Count = useRef<number>(0);
     const l3r3LastTime = useRef<number>(0);
     const l3r3Pressed = useRef<boolean>(false);
+    const hasRunningAppsRef = useRef<boolean>(hasRunningApps);
 
     const isPointerBlocked = (el: HTMLElement): boolean => {
         let node: Element | null = el.parentElement;
@@ -162,6 +163,10 @@ export function useSpatialNavigation() {
     }, []);
 
     useEffect(() => {
+        hasRunningAppsRef.current = hasRunningApps;
+    }, [hasRunningApps]);
+
+    useEffect(() => {
         // Keyboard Listener
         const handleKeyDown = (e: KeyboardEvent) => {
             const isTyping =
@@ -254,53 +259,58 @@ export function useSpatialNavigation() {
                 const activePad = gamepads[i];
                 if (!activePad) continue;
                 const now = Date.now();
-                // Simple debounce to avoid flying through the UI (150ms is usually sweet spot for responsiveness)
-                if (now - lastActionTime.current > 150) {
-                    let handled = false;
-                    const threshold = 0.6;
-                    const axisX = activePad.axes[0] || 0;
-                    const axisY = activePad.axes[1] || 0;
-                    
-                    // Allow navigation from axes (often mapping for D-pad on some controllers)
-                    const up = activePad.buttons[12]?.pressed || axisY < -threshold;
-                    const down = activePad.buttons[13]?.pressed || axisY > threshold;
-                    const left = activePad.buttons[14]?.pressed || axisX < -threshold;
-                    const right = activePad.buttons[15]?.pressed || axisX > threshold;
 
-                    if (up) { moveFocus("up"); handled = true; }
-                    else if (down) { moveFocus("down"); handled = true; }
-                    else if (left) { moveFocus("left"); handled = true; }
-                    else if (right) { moveFocus("right"); handled = true; }
+                // When an app/site is running, block all navigation and actions —
+                // only L3+R3 (below) is allowed to kill the running process.
+                if (!hasRunningAppsRef.current) {
+                    // Simple debounce to avoid flying through the UI (150ms is usually sweet spot for responsiveness)
+                    if (now - lastActionTime.current > 150) {
+                        let handled = false;
+                        const threshold = 0.6;
+                        const axisX = activePad.axes[0] || 0;
+                        const axisY = activePad.axes[1] || 0;
 
-                    // Action button (A / Cross = button 0)
-                    else if (activePad.buttons[0]?.pressed) {
-                        const activeEl = document.activeElement as HTMLElement;
-                        if (activeEl) activeEl.click();
-                        handled = true;
-                    }
+                        // Allow navigation from axes (often mapping for D-pad on some controllers)
+                        const up = activePad.buttons[12]?.pressed || axisY < -threshold;
+                        const down = activePad.buttons[13]?.pressed || axisY > threshold;
+                        const left = activePad.buttons[14]?.pressed || axisX < -threshold;
+                        const right = activePad.buttons[15]?.pressed || axisX > threshold;
 
-                    // Context Menu (Y / Triangle = button 3 OR Start = button 9)
-                    else if (activePad.buttons[3]?.pressed || activePad.buttons[9]?.pressed) {
-                        const activeEl = document.activeElement as HTMLElement;
-                        if (activeEl) {
-                            // Try-catch and direct dispatch for responsiveness
-                            try {
-                                const event = new MouseEvent("contextmenu", {
-                                    bubbles: true,
-                                    cancelable: true,
-                                    view: window,
-                                    clientX: 0, // Signal programmatic
-                                    clientY: 0
-                                });
-                                activeEl.dispatchEvent(event);
-                            } catch (e) { console.error("Gamepad context menu error", e) }
+                        if (up) { moveFocus("up"); handled = true; }
+                        else if (down) { moveFocus("down"); handled = true; }
+                        else if (left) { moveFocus("left"); handled = true; }
+                        else if (right) { moveFocus("right"); handled = true; }
+
+                        // Action button (A / Cross = button 0)
+                        else if (activePad.buttons[0]?.pressed) {
+                            const activeEl = document.activeElement as HTMLElement;
+                            if (activeEl) activeEl.click();
+                            handled = true;
                         }
-                        handled = true;
-                    }
 
-                    if (handled) {
-                        lastActionTime.current = now;
-                        break; // Stop processing other gamepads for this frame if one handled it
+                        // Context Menu (Y / Triangle = button 3 OR Start = button 9)
+                        else if (activePad.buttons[3]?.pressed || activePad.buttons[9]?.pressed) {
+                            const activeEl = document.activeElement as HTMLElement;
+                            if (activeEl) {
+                                // Try-catch and direct dispatch for responsiveness
+                                try {
+                                    const event = new MouseEvent("contextmenu", {
+                                        bubbles: true,
+                                        cancelable: true,
+                                        view: window,
+                                        clientX: 0, // Signal programmatic
+                                        clientY: 0
+                                    });
+                                    activeEl.dispatchEvent(event);
+                                } catch (e) { console.error("Gamepad context menu error", e) }
+                            }
+                            handled = true;
+                        }
+
+                        if (handled) {
+                            lastActionTime.current = now;
+                            break; // Stop processing other gamepads for this frame if one handled it
+                        }
                     }
                 }
 

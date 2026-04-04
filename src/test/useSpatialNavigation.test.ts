@@ -697,3 +697,85 @@ describe('useSpatialNavigation – Gamepad Button Actions', () => {
         expect(document.activeElement?.id).toBe('right-card');
     });
 });
+
+// ─── Gamepad: Locked mode (hasRunningApps) ────────────────────────────────────
+
+describe('useSpatialNavigation – Gamepad locked when app is running', () => {
+    let mockGetGamepads: any;
+
+    const l3r3Pad = makePad({ buttons: Array(16).fill(false).map((_, i) => i === 10 || i === 11) });
+    const releasedPad = makePad();
+
+    beforeEach(() => {
+        vi.useFakeTimers();
+        mockGetGamepads = vi.fn();
+        Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: mockGetGamepads });
+        setupDOM([
+            { id: 'center',     left: 100, top: 100 },
+            { id: 'right-card', left: 200, top: 100 },
+        ]);
+        vi.clearAllMocks();
+    });
+
+    afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        document.body.innerHTML = '';
+        vi.restoreAllMocks();
+    });
+
+    it('button 0 (A/Cross) does NOT fire click when hasRunningApps=true', () => {
+        const center = document.getElementById('center')!;
+        const clickSpy = vi.fn();
+        center.addEventListener('click', clickSpy);
+        center.focus();
+        mockGetGamepads.mockReturnValue([makePad({ buttons: Array(16).fill(false).map((_, i) => i === 0) })]);
+        vi.setSystemTime(200);
+        renderHook(() => useSpatialNavigation(true));
+        vi.advanceTimersByTime(200);
+        expect(clickSpy).not.toHaveBeenCalled();
+    });
+
+    it('D-pad navigation does NOT move focus when hasRunningApps=true', () => {
+        const center = document.getElementById('center')!;
+        center.focus();
+        mockGetGamepads.mockReturnValue([makePad({ axes: [1, 0] })]);
+        vi.setSystemTime(200);
+        renderHook(() => useSpatialNavigation(true));
+        vi.advanceTimersByTime(200);
+        expect(document.activeElement?.id).toBe('center');
+    });
+
+    it('button 3 (Y/Triangle) does NOT dispatch contextmenu when hasRunningApps=true', () => {
+        const center = document.getElementById('center')!;
+        center.focus();
+        const ctxSpy = vi.fn();
+        center.addEventListener('contextmenu', ctxSpy);
+        mockGetGamepads.mockReturnValue([makePad({ buttons: Array(16).fill(false).map((_, i) => i === 3) })]);
+        vi.setSystemTime(200);
+        renderHook(() => useSpatialNavigation(true));
+        vi.advanceTimersByTime(200);
+        expect(ctxSpy).not.toHaveBeenCalled();
+    });
+
+    it('L3+R3 triple press STILL invokes kill_all_kiosks when hasRunningApps=true', async () => {
+        renderHook(() => useSpatialNavigation(true));
+
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(400);
+
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+        mockGetGamepads.mockReturnValue([releasedPad]);
+        vi.advanceTimersByTime(400);
+
+        mockGetGamepads.mockReturnValue([l3r3Pad]);
+        vi.advanceTimersByTime(16);
+
+        vi.useRealTimers();
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        expect(mockInvoke).toHaveBeenCalledWith('kill_all_kiosks');
+    });
+});

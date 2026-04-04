@@ -86,6 +86,7 @@ function App() {
 
   const [items, setItems] = useState<KioskerItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(true);
+  const [activeTargets, setActiveTargets] = useState<string[]>([]);
 
   const fetchItems = async () => {
     try {
@@ -98,12 +99,27 @@ function App() {
     }
   };
 
+  const refreshActiveTargets = async () => {
+    try {
+      const targets = await invoke<string[]>("get_active_targets");
+      setActiveTargets(targets);
+    } catch (e) {
+      console.error("Failed to poll active targets", e);
+    }
+  };
+
   useEffect(() => {
     fetchItems();
   }, []);
 
-  // Ativa a escuta global de Gamepads e Teclado 
-  useSpatialNavigation();
+  useEffect(() => {
+    refreshActiveTargets();
+    const interval = setInterval(refreshActiveTargets, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Ativa a escuta global de Gamepads e Teclado
+  useSpatialNavigation(activeTargets.length > 0);
 
   return (
     <>
@@ -112,7 +128,7 @@ function App() {
 
         <div className="flex-1 h-full z-10 w-full overflow-hidden relative pt-24 px-12 md:px-20">
           <section className={`absolute inset-0 pt-24 px-12 md:px-20 transition-all duration-500 ${activeTab === "home" ? "opacity-100 translate-y-0 z-20" : "opacity-0 translate-y-4 pointer-events-none z-10"}`}>
-            <HomeGrid items={items} loading={loadingItems} onRefresh={fetchItems} />
+            <HomeGrid items={items} loading={loadingItems} onRefresh={fetchItems} activeTargets={activeTargets} onRefreshTargets={refreshActiveTargets} />
           </section>
 
           <section className={`absolute inset-0 pt-24 px-12 md:px-20 transition-all duration-500 ${activeTab === "settings" ? "opacity-100 translate-y-0 z-20" : "opacity-0 translate-y-4 pointer-events-none z-10"}`}>
