@@ -298,8 +298,8 @@ pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
     use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
 
-    static LEFT_CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
-    static LAST_LEFT_CLICK_TIME: AtomicU64 = AtomicU64::new(0);
+    static RIGHT_CLICK_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static LAST_RIGHT_CLICK_TIME: AtomicU64 = AtomicU64::new(0);
 
     let app_handle_inner = app_handle.clone();
     std::thread::spawn(move || {
@@ -309,24 +309,24 @@ pub fn start_global_mouse_listener(app_handle: tauri::AppHandle) {
         }
 
         if let Err(error) = listen(move |event: Event| {
-            if let EventType::ButtonPress(Button::Left) = event.event_type {
+            if let EventType::ButtonPress(Button::Right) = event.event_type {
                 let now = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .unwrap()
                     .as_millis() as u64;
-                let last = LAST_LEFT_CLICK_TIME.load(Ordering::SeqCst);
+                let last = LAST_RIGHT_CLICK_TIME.load(Ordering::SeqCst);
 
                 if now - last > 1000 {
-                    LEFT_CLICK_COUNT.store(1, Ordering::SeqCst);
+                    RIGHT_CLICK_COUNT.store(1, Ordering::SeqCst);
                 } else {
-                    let count = LEFT_CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
+                    let count = RIGHT_CLICK_COUNT.fetch_add(1, Ordering::SeqCst) + 1;
                     if count >= 3 {
-                        LEFT_CLICK_COUNT.store(0, Ordering::SeqCst);
+                        RIGHT_CLICK_COUNT.store(0, Ordering::SeqCst);
                         let state = app_handle_inner.state::<AppState>();
                         kill_kiosk_browsers(Some(&state));
                     }
                 }
-                LAST_LEFT_CLICK_TIME.store(now, Ordering::SeqCst);
+                LAST_RIGHT_CLICK_TIME.store(now, Ordering::SeqCst);
             }
         }) {
             println!("Error listening to global mouse: {:?}", error);

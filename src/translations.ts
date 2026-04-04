@@ -48,7 +48,7 @@ export const translations = {
                 exit: {
                     title: "Sair / fechar tudo",
                     desc: "Volta imediatamente para o Kiosker",
-                    mouse: "3 cliques rápidos (esq.)",
+                    mouse: "3 cliques rápidos (dir.)",
                 },
                 manage: {
                     title: "Gerenciar item",
@@ -142,7 +142,7 @@ export const translations = {
                 exit: {
                     title: "Exit / close all",
                     desc: "Immediately return to Kiosker",
-                    mouse: "3 quick left-clicks",
+                    mouse: "3 quick right-clicks",
                 },
                 manage: {
                     title: "Manage item",

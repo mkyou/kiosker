@@ -43,7 +43,7 @@ O Kiosker foi pensado para ser simples e operar com qualquer dispositivo de entr
 | Navegar | `↑ ↓ ← →` | Clique | Direcional / Analógico |
 | Abrir / Confirmar | `Enter` | Clique | `A` / `X` |
 | Menu de opções | `Shift+F10` | Botão direito | `Y` / `Triângulo` ou `Start` |
-| Sair do Kiosker | `Ctrl+Shift+Q` | 3× clique esquerdo | `L3 + R3` (3×) |
+| Sair do Kiosker | `Ctrl+Shift+Q` | 3× clique direito | `L3 + R3` (3×) |
 
 O Kiosker abre aplicativos em tela cheia e executa sites no modo `--kiosk` do navegador. Para voltar ao hub use qualquer um dos atalhos de saída acima.
 

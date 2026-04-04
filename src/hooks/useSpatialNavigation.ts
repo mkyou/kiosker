@@ -222,10 +222,8 @@ export function useSpatialNavigation() {
             }
         };
 
-        // Mouse Triple Left-Click Listener (same element required to avoid accidental triggers)
-        const handleClick = (e: MouseEvent) => {
-            if (e.button !== 0) return; // Only Left Click
-
+        // Mouse Triple Right-Click Listener (same element required to avoid accidental triggers)
+        const handleContextMenu = (e: MouseEvent) => {
             const now = Date.now();
             const sameTarget = e.target === lastClickTarget.current;
 
@@ -245,13 +243,7 @@ export function useSpatialNavigation() {
             }
         };
 
-        const handleContextMenu = (_e: MouseEvent) => {
-            // We only prevent default if we want to block the browser menu, 
-            // but our MediaCard handles its own contextmenu event.
-        };
-
         window.addEventListener("keydown", handleKeyDown);
-        window.addEventListener("click", handleClick);
         window.addEventListener("contextmenu", handleContextMenu);
 
         // Gamepad Polling Loop
@@ -337,7 +329,6 @@ export function useSpatialNavigation() {
 
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
-            window.removeEventListener("click", handleClick);
             window.removeEventListener("contextmenu", handleContextMenu);
             if (gamepadRef.current) cancelAnimationFrame(gamepadRef.current);
         };

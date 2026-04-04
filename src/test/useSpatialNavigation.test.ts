@@ -222,43 +222,43 @@ describe('useSpatialNavigation – Mouse Triple-Click', () => {
         vi.restoreAllMocks();
     });
 
-    it('three left-clicks on the same target within 1000ms invoke kill_all_kiosks', async () => {
+    it('three right-clicks on the same target within 1000ms invoke kill_all_kiosks', async () => {
         renderHook(() => useSpatialNavigation());
         vi.setSystemTime(0);
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         vi.setSystemTime(500);
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         vi.setSystemTime(900);
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         // Switch to real timers so the dynamic import Promise chain can resolve.
         vi.useRealTimers();
         await new Promise<void>(resolve => setTimeout(resolve, 0));
         expect(mockInvoke).toHaveBeenCalledWith('kill_all_kiosks');
     });
 
-    it('three clicks on different elements do NOT invoke kill_all_kiosks', () => {
+    it('three right-clicks on different elements do NOT invoke kill_all_kiosks', () => {
         renderHook(() => useSpatialNavigation());
         const divA = document.createElement('div');
         const divB = document.createElement('div');
         const divC = document.createElement('div');
         document.body.append(divA, divB, divC);
         vi.setSystemTime(0);
-        divA.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        divA.dispatchEvent(new MouseEvent('contextmenu', { button: 2, bubbles: true }));
         vi.setSystemTime(200);
-        divB.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        divB.dispatchEvent(new MouseEvent('contextmenu', { button: 2, bubbles: true }));
         vi.setSystemTime(400);
-        divC.dispatchEvent(new MouseEvent('click', { button: 0, bubbles: true }));
+        divC.dispatchEvent(new MouseEvent('contextmenu', { button: 2, bubbles: true }));
         expect(mockInvoke).not.toHaveBeenCalledWith('kill_all_kiosks');
     });
 
-    it('third click after >1000ms from previous resets count and does NOT invoke kill_all_kiosks', () => {
+    it('third right-click after >1000ms from previous resets count and does NOT invoke kill_all_kiosks', () => {
         renderHook(() => useSpatialNavigation());
         vi.setSystemTime(0);
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         vi.setSystemTime(500);
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         vi.setSystemTime(1700); // 1200ms after last click → resets count to 1
-        window.dispatchEvent(new MouseEvent('click', { button: 0 }));
+        window.dispatchEvent(new MouseEvent('contextmenu', { button: 2 }));
         expect(mockInvoke).not.toHaveBeenCalledWith('kill_all_kiosks');
     });
 });
@@ -630,7 +630,7 @@ describe('useSpatialNavigation – Edge Cases', () => {
         const { unmount } = renderHook(() => useSpatialNavigation());
         unmount();
         expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function));
-        expect(removeSpy).toHaveBeenCalledWith('click', expect.any(Function));
+        expect(removeSpy).toHaveBeenCalledWith('contextmenu', expect.any(Function));
         expect(cancelSpy).toHaveBeenCalled();
     });
 });

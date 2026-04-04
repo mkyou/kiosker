@@ -138,8 +138,8 @@ Convenção: ✅ já existe | ❌ não existe
 | 85 | `Enter` dispara `.click()` no elemento focado | `Enter fires .click() on the focused element` | ✅ |
 | 86 | `Ctrl+Shift+Q` invoca `kill_all_kiosks` | `Ctrl+Shift+Q invokes kill_all_kiosks` | ✅ |
 | 87 | `Shift+F10` dispara evento `contextmenu` no elemento focado | `Shift+F10 dispatches contextmenu event on the focused element` | ✅ |
-| 88 | Triple-click em ≤ 1000ms invoca `kill_all_kiosks` | `three left-clicks within 1000ms invoke kill_all_kiosks` | ✅ |
-| 89 | Triple-click com > 1000ms entre cliques NÃO invoca `kill_all_kiosks` | `third click after >1000ms from previous resets count and does NOT invoke kill_all_kiosks` | ✅ |
+| 88 | Triple right-click em ≤ 1000ms invoca `kill_all_kiosks` | `three right-clicks within 1000ms invoke kill_all_kiosks` | ✅ |
+| 89 | Triple right-click com > 1000ms entre cliques NÃO invoca `kill_all_kiosks` | `third right-click after >1000ms from previous resets count and does NOT invoke kill_all_kiosks` | ✅ |
 | 90 | Wrap `→`: sem elemento à direita, vai para o elemento mais à esquerda | `ArrowRight on the rightmost element wraps focus to the leftmost element` | ✅ |
 | 91 | Wrap `←`: sem elemento à esquerda, vai para o elemento mais à direita | `ArrowLeft on the leftmost element wraps focus to the rightmost element` | ✅ |
 | 92 | Wrap `↓`: sem elemento abaixo, vai para o elemento mais ao topo | `ArrowDown on the bottommost element wraps focus to the topmost element` | ✅ |
